@@ -362,4 +362,29 @@ export const db = {
     );
     return rows;
   },
+
+  // ── Privileged roles ───────────────────────────────────────────────────────
+
+  /** Upsert a role assignment (or revocation) for a contract. */
+  async upsertRole({ contract_id, role, address, revoked = false, ledger = null }) {
+    await pool.query(
+      `INSERT INTO privileged_roles (contract_id, role, address, revoked, ledger, updated_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())
+       ON CONFLICT (contract_id, role, address)
+       DO UPDATE SET revoked = $4, ledger = $5, updated_at = NOW()`,
+      [contract_id, role, address, revoked, ledger]
+    );
+  },
+
+  /** Return all active (non-revoked) role holders for a contract. */
+  async getRoles(contractId) {
+    const { rows } = await pool.query(
+      `SELECT role, address, ledger, updated_at
+       FROM privileged_roles
+       WHERE contract_id = $1 AND revoked = FALSE
+       ORDER BY role, updated_at DESC`,
+      [contractId]
+    );
+    return rows;
+  },
 };

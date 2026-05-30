@@ -8,6 +8,7 @@ import MigrationBanner from "../components/MigrationBanner";
 import SourceFileTree from "../components/SourceFileTree";
 import SimulateButton from "../components/SimulateButton";
 import InvocationFlowChart, { type InvocationNode } from "../components/InvocationFlowChart";
+import PrivilegedRoles from "../components/PrivilegedRoles";
 
 // Demo source shown when no verified source is uploaded
 const DEMO_SOURCE = `// Verified source not yet uploaded for this contract.
@@ -44,7 +45,7 @@ const DEMO_TREE: InvocationNode = {
   ],
 };
 
-type Tab = "overview" | "source" | "simulate" | "flow";
+type Tab = "overview" | "source" | "simulate" | "flow" | "roles";
 
 export default function ContractPage() {
   const { id = "" } = useParams();
@@ -81,6 +82,7 @@ export default function ContractPage() {
     { key: "source",   label: "Source Code" },
     { key: "simulate", label: "Simulate" },
     { key: "flow",     label: "Invocation Flow" },
+    { key: "roles",    label: "Privileged Roles" },
   ];
 
   return (
@@ -196,6 +198,9 @@ export default function ContractPage() {
       {tab === "flow" && (
         <InvocationFlowChart root={(meta as any).invocation_tree ?? DEMO_TREE} />
       )}
+
+      {/* Tab: Privileged Roles */}
+      {tab === "roles" && <PrivilegedRoles contractId={id} />}
     </div>
   );
 }
