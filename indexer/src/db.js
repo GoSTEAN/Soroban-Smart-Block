@@ -42,6 +42,11 @@ export const db = {
     `);
   },
 
+  async getMaxLedger() {
+    const { rows } = await pool.query("SELECT COALESCE(MAX(ledger), 0) AS max_ledger FROM events");
+    return Number(rows[0].max_ledger);
+  },
+
   async upsertEvent(ev) {
     await pool.query(
       `INSERT INTO events
