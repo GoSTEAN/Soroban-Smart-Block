@@ -10,7 +10,7 @@ const NATIVE_SAC_IDS = new Set([
 
 /**
  * Decode a raw Soroban RPC event into a human-readable record.
- * Falls back to a generic description when no ABI is registered.
+ * Uses the ABI template when available; falls back to a generic description.
  */
 export async function decode(ev) {
   const contractId = ev.contractId;
