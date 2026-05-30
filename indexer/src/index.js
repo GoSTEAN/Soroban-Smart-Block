@@ -12,6 +12,13 @@ const POLL_MS    = Number(process.env.POLL_MS       || 5000);
 
 const rpc = new SorobanRpc.Server(RPC_URL, { allowHttp: true });
 
+// Mutable cursor shared with the reorg worker so it can rewind on fork
+let cursor = 0;
+const cursorRef = {
+  getCursor: () => cursor,
+  setCursor: (n) => { cursor = n; },
+};
+
 async function indexLedger(ledger) {
   const res = await withRetry(() => rpc.getEvents({
     startLedger: ledger,
@@ -22,7 +29,13 @@ async function indexLedger(ledger) {
   for (const ev of res.events) {
     const decoded = await decode(ev);
     await db.upsertEvent(decoded);
+    publish(decoded);                          // Issue #39 — push to WS clients
     console.log(`[${ev.ledger}] ${decoded.function}: ${decoded.description}`);
+  }
+
+  // Issue #37 — record the latest ledger hash for re-org detection
+  if (res.latestLedger && res.latestLedgerHash) {
+    await recordLedgerHash(res.latestLedger, res.latestLedgerHash).catch(() => {});
   }
 
   return res.latestLedger;

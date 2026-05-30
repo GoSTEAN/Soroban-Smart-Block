@@ -1,7 +1,9 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
+import type { DecodedEvent } from "../api";
 import EventTable from "../components/EventTable";
+import { useEventStream } from "../hooks/useEventStream";
 
 const FUNCTIONS = ["", "swap", "transfer", "mint", "burn", "stake", "unstake", "wrap_native", "unwrap_native"];
 
@@ -27,6 +29,16 @@ export default function Home() {
       type: txType !== "all" ? txType : undefined,
     }),
   });
+
+  // Issue #39 — invalidate the event list when a live event arrives on page 1
+  const handleLiveEvent = useCallback((ev: DecodedEvent) => {
+    setLiveCount(c => c + 1);
+    if (page === 1 && (!fnFilter || ev.function === fnFilter)) {
+      queryClient.invalidateQueries({ queryKey: ["events", fnFilter, 1] });
+    }
+  }, [page, fnFilter, queryClient]);
+
+  useEventStream(handleLiveEvent);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>

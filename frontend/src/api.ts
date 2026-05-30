@@ -8,6 +8,10 @@ export interface DecodedEvent {
   description: string;
   raw_topics: string[];
   tx_hash?: string;
+  // Issue #40: Soroban resource gas costs
+  cpu_instructions?: number;
+  mem_bytes?: number;
+  fee_charged?: number;
 }
 
 export interface ContractMeta {
@@ -15,6 +19,18 @@ export interface ContractMeta {
   name: string;
   description: string;
   functions: { name: string; description: string }[];
+}
+
+// Issue #38: paginated contract transaction response
+export interface ContractTransactionsResponse {
+  data: DecodedEvent[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    total_pages: number;
+    has_next: boolean;
+  };
 }
 
 async function get<T>(path: string): Promise<T> {
