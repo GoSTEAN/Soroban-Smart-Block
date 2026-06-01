@@ -29,6 +29,19 @@ export interface FeeBumpInfo {
   actual_caller: string | null;
 }
 
+// Issue #177: Factory deployment tracking
+export interface FactoryDeploymentContract {
+  contractId: string;
+  wasmHash: string | null;
+  deploymentMethod: string;
+  index: number;
+}
+
+export interface FactoryDeploymentTree {
+  factoryContractId: string | null;
+  contracts: FactoryDeploymentContract[];
+}
+
 // Issue #164: CAP-0080 ZK host function types
 export interface ZkHostCall {
   fn_name: string;

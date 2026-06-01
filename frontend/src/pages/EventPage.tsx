@@ -86,6 +86,11 @@ export default function EventPage() {
       {/* Fee-Bump sponsorship banner */}
       {ev.fee_bump && <FeeSponsorBanner feeBump={ev.fee_bump} />}
 
+      {/* Issue #177 — Factory Deployment Trace */}
+      {ev.factory_deployment && (
+        <FactoryDeploymentTree deployment={ev.factory_deployment} />
+      )}
+
       {/* Issue #40 — Resource Consumption breakdown */}
       <ResourceCosts event={ev} />
 

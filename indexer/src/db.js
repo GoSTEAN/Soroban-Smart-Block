@@ -91,6 +91,9 @@ export const db = {
       -- Issue #169: fee-bump chain of custody (sponsor, channel account, actual caller)
       ALTER TABLE events ADD COLUMN IF NOT EXISTS fee_bump JSONB;
 
+      -- Issue #177: factory deployment tracking (multi-contract composite deployments)
+      ALTER TABLE events ADD COLUMN IF NOT EXISTS factory_deployment JSONB;
+
       -- Issue #117: sub-invocation indexing
       CREATE TABLE IF NOT EXISTS sub_invocations (
         id              BIGSERIAL PRIMARY KEY,
