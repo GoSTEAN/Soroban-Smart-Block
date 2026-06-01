@@ -53,9 +53,13 @@ async function indexLedger(ledger) {
     const res = await withRetry(() => rpc.getEvents(req));
     latestLedger = res.latestLedger ?? latestLedger;
 
+    // Flag footprint contention across transactions in this page's events
+    scanFootprintContention(res.events);
+
     for (const ev of res.events) {
       const decoded = await decode(ev);
       decoded.is_high_bloat_risk = isHighBloatRisk(ev, ev.contractId);
+      decoded.footprint_contention = ev.footprint_contention ?? false;
 
       const upgrade = detectUpgrade(ev);
       if (upgrade) {
