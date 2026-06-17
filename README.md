@@ -217,9 +217,25 @@ The decoder recognises SEP-41 token events (`transfer`, `mint`, `burn`) and form
 
 ---
 
+## Documentation
+
+A full developer documentation site lives under [`docs/`](docs/):
+
+- [Documentation home](docs/site/index.html) — guides, reference, and search.
+- [Getting started](docs/guides/getting-started.md) and other step-by-step guides.
+- [API playground](docs/api/playground.html) (Swagger UI) and an interactive
+  [try-it console](docs/api/try-it.html) with curl / JS / Python / Rust snippets.
+- [OpenAPI spec](docs/api/openapi.json) and [API changelog](docs/api/changelog.md).
+- [Interactive architecture explorer](docs/site/architecture.html).
+
+The site is published to GitHub Pages by
+[`.github/workflows/docs.yml`](.github/workflows/docs.yml), which also generates
+JSDoc (indexer) and Rustdoc (contract) reference.
+
 ## Contributing
 
-PRs welcome. Please open an issue first for large changes.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow, commit conventions, and
+PR checklist. Please open an issue first for large changes.
 
 ---
 
