@@ -1,13 +1,16 @@
 # Implementation Summary: Issues #81 and #86
 
 ## Overview
+
 This document summarizes the implementation of two major features for the Soroban Smart Block Explorer:
+
 - **Issue #86**: Circuit Breaker Detection for Automated Contract Pausing Operations
 - **Issue #81**: RWA Token Activity Decoder for Franklin Templeton Benji Token
 
 ## Issue #86: Circuit Breaker Detector
 
 ### Problem Statement
+
 Detect whether a contract implements a structural circuit breaker mechanism (pausable switches) and display its current status with a highly visible indicator banner showing either "Status: Operational" or "Status: Paused by Emergency Administration".
 
 ### Implementation
@@ -51,9 +54,11 @@ Detect whether a contract implements a structural circuit breaker mechanism (pau
 ### Detection Logic
 
 The detector identifies circuit breaker mechanisms by looking for functions with names containing:
+
 - `pause`, `unpause`, `is_paused`, `paused`, `emergency`, `halt`, `stop`
 
 Status is determined by analyzing events in reverse chronological order:
+
 - If most recent pause/unpause event is a `pause` → Status: Paused
 - If most recent pause/unpause event is an `unpause` → Status: Operational
 - If no pause events → Status: Operational (default)
@@ -61,6 +66,7 @@ Status is determined by analyzing events in reverse chronological order:
 ### Testing
 
 Comprehensive test suite in `circuitBreakerDetector.test.js`:
+
 - ✓ Detects pause function
 - ✓ Detects unpause function
 - ✓ Detects is_paused function
@@ -74,6 +80,7 @@ Comprehensive test suite in `circuitBreakerDetector.test.js`:
 ## Issue #81: RWA Token Activity Decoder
 
 ### Problem Statement
+
 Build specific metadata decoders tailored for institutional real-world asset (RWA) token actions like dividend payouts or investor registry updates. Map custom enterprise function indicators to clear corporate action labels in the UI.
 
 ### Implementation
@@ -119,6 +126,7 @@ Build specific metadata decoders tailored for institutional real-world asset (RW
 #### RWA Detection Logic
 
 Contracts are identified as RWA tokens if they have:
+
 1. Explicit RWA metadata fields (`is_rwa`, `rwa_type`)
 2. RWA-related keywords in name/description:
    - 'rwa', 'real-world asset', 'benji', 'franklin templeton'
@@ -130,6 +138,7 @@ Contracts are identified as RWA tokens if they have:
 #### Benji Token Support
 
 Special support for Franklin Templeton Benji token with:
+
 - Dividend distribution tracking
 - Investor registry management
 - Share issuance/redemption
@@ -138,6 +147,7 @@ Special support for Franklin Templeton Benji token with:
 ### Testing
 
 Comprehensive test suite in `rwaDecoder.test.js`:
+
 - ✓ Detects RWA token by rwa_type metadata
 - ✓ Detects RWA token by name pattern
 - ✓ Returns null for non-RWA contracts
@@ -181,16 +191,17 @@ ALTER TABLE contracts ADD COLUMN IF NOT EXISTS rwa_type TEXT;
 
 ### API Endpoints
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/contracts/:id/circuit-breaker` | GET | Get circuit breaker status |
-| `/api/contracts/:id/rwa-metadata` | GET | Get RWA token metadata |
+| Endpoint                             | Method | Description                |
+| ------------------------------------ | ------ | -------------------------- |
+| `/api/contracts/:id/circuit-breaker` | GET    | Get circuit breaker status |
+| `/api/contracts/:id/rwa-metadata`    | GET    | Get RWA token metadata     |
 
 ---
 
 ## Files Modified/Created
 
 ### Created Files
+
 - `indexer/src/circuitBreakerDetector.js` - Circuit breaker detection logic
 - `indexer/src/circuitBreakerIndexer.js` - Circuit breaker event processing
 - `indexer/src/rwaDecoder.js` - RWA event decoding
@@ -200,6 +211,7 @@ ALTER TABLE contracts ADD COLUMN IF NOT EXISTS rwa_type TEXT;
 - `frontend/src/components/RwaMetadataDisplay.tsx` - RWA metadata UI component
 
 ### Modified Files
+
 - `indexer/src/db.js` - Added schema columns and methods
 - `indexer/src/api.js` - Added endpoints and RWA detection
 - `indexer/src/decoder.js` - Integrated RWA decoder
@@ -212,6 +224,7 @@ ALTER TABLE contracts ADD COLUMN IF NOT EXISTS rwa_type TEXT;
 ## Testing
 
 All tests pass successfully:
+
 ```
 ✓ circuitBreakerDetector (5.93ms)
   ✓ hasCircuitBreaker (3.06ms)
@@ -247,6 +260,7 @@ All tests pass successfully:
 ## Acceptance Criteria Met
 
 ### Issue #86
+
 - ✅ Contract's primary dashboard displays highly visible indicator banner
 - ✅ Banner shows "Status: Operational" or "Status: Paused by Emergency Administration"
 - ✅ Detects circuit breaker mechanism from function names
@@ -254,6 +268,7 @@ All tests pass successfully:
 - ✅ Updates status in real-time as events are indexed
 
 ### Issue #81
+
 - ✅ RWA transactions display clear, natural text strings
 - ✅ Example: "Distributed Dividend Yield of 0.04 USD per share to 1,200 investors"
 - ✅ Maps custom enterprise function indicators to corporate action labels

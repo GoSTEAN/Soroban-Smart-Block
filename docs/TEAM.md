@@ -15,6 +15,7 @@ this project to make Soroban activity human-readable for the entire Stellar ecos
 **Role:** Smart contract architecture, Soroban SDK integration, XDR decoding, full-stack development  
 **GitHub:** [github.com/sundayabel085](https://github.com/sundayabel085)  
 **Relevant experience:**
+
 - 1 year building in Rust, including this Soroban smart contract
 - Built the `ExplorerContract` in this repo: ABI-like registry + on-chain event decoder
 - Familiar with Soroban SDK, `scValToNative`, XDR encoding, and Soroban RPC event model

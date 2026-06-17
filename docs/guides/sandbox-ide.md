@@ -5,18 +5,21 @@ Interactive web-based IDE for developing and testing Soroban contracts with live
 ## Features
 
 ### 📝 Code Editor
+
 - Monaco Editor with syntax highlighting for JavaScript, TypeScript, Rust, and Python
 - Multi-file project support with file explorer
 - Auto-save every 30 seconds
 - Session persistence with localStorage + backend
 
 ### 🚀 WebContainer Runtime
+
 - Run Node.js projects directly in the browser
 - Execute npm commands and scripts
 - Real-time terminal output
 - No external infrastructure required
 
 ### 📦 Multiple Framework Templates
+
 - **Node.js SDK** - Soroban Explorer event listener
 - **React SPA** - Full React app with explorer integration
 - **Python SDK** - Python event consumer
@@ -24,18 +27,21 @@ Interactive web-based IDE for developing and testing Soroban contracts with live
 - **Foundry** - Fast Rust-based toolkit
 
 ### 🔗 Sharing & Export
+
 - Generate shareable URLs for read-only access
 - Export projects as ZIP files
 - QR codes for mobile viewing
 - Shareable links last indefinitely
 
 ### 🔍 Dependency Analyzer
+
 - Parse package.json dependencies
 - Detect security vulnerabilities
 - Estimate bundle size
 - Display severity levels (critical, high, medium)
 
 ### 💾 Project Persistence
+
 - Auto-save to browser storage
 - Backend storage for sharing
 - Load previous sessions
@@ -53,6 +59,7 @@ Interactive web-based IDE for developing and testing Soroban contracts with live
 ### Running Code
 
 Click the **Run** button to execute your project:
+
 - Dependencies install automatically
 - Terminal shows live output
 - Errors are displayed in real-time
@@ -98,6 +105,7 @@ Click the **Run** button to execute your project:
 ## API Routes
 
 ### Save Sandbox
+
 ```
 POST /api/sandbox
 Content-Type: application/json
@@ -111,6 +119,7 @@ Content-Type: application/json
 ```
 
 ### Load Sandbox
+
 ```
 GET /api/sandbox/:id
 
@@ -125,6 +134,7 @@ Response:
 ```
 
 ### List Sandboxes
+
 ```
 GET /api/sandboxes?limit=20&offset=0
 
@@ -140,11 +150,13 @@ Response:
 ## Environment Variables
 
 Frontend (`.env.local` or `.env`):
+
 ```
 VITE_API_URL=http://localhost:3001
 ```
 
 Backend (`.env`):
+
 ```
 DATABASE_URL=postgresql://...
 PORT=3001
@@ -154,6 +166,7 @@ SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
 ## Templates
 
 Each template includes:
+
 - Pre-configured `package.json` / `Cargo.toml`
 - Environment variables (`.env`)
 - README with setup instructions
@@ -166,19 +179,19 @@ Add to `frontend/src/services/templates.ts`:
 
 ```typescript
 export const TEMPLATES = {
-  'my-template': {
-    name: 'My Custom Template',
-    description: 'Description here',
+  "my-template": {
+    name: "My Custom Template",
+    description: "Description here",
     files: {
-      'src/index.js': { 
-        path: 'src/index.js',
-        language: 'javascript',
-        content: `// Code here`
+      "src/index.js": {
+        path: "src/index.js",
+        language: "javascript",
+        content: `// Code here`,
       },
       // ... more files
-    }
-  }
-}
+    },
+  },
+};
 ```
 
 ## Development
@@ -210,11 +223,13 @@ npm run migrate
 ## Roadmap
 
 ### Phase 2 (Complete)
+
 - ✅ Collaboration with Y.js CRDT
 - ✅ AI-powered code assistant
 - ✅ GitHub integration
 
 ### Phase 3 (Future)
+
 - Built-in debugger with breakpoints
 - Plugin/extension system
 - CI integration (GitHub Actions)
@@ -224,16 +239,19 @@ npm run migrate
 ## Troubleshooting
 
 ### WebContainer not loading
+
 - Check browser console for COOP/COEP header errors
 - Works best in Chrome/Edge, Firefox, Safari (latest versions)
 - Enable in deployment via proper HTTP headers
 
 ### Files not saving
+
 - Check browser storage quota
 - Try exporting project as backup
 - Backend must be running for persistent storage
 
 ### npm commands failing
+
 - Verify `package.json` syntax
 - Check network for npm registry access
 - WebContainer has limited environment variables
