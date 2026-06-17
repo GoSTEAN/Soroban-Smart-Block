@@ -1,5 +1,11 @@
 import "./load-env.js";
-import { runAllChecks } from "../indexer/src/doctor-lib.js";
+
+let runAllChecks;
+try {
+  ({ runAllChecks } = await import("../indexer/src/doctor-lib.js"));
+} catch {
+  runAllChecks = null;
+}
 
 const green = (text) => `\x1b[32m${text}\x1b[0m`;
 const red = (text) => `\x1b[31m${text}\x1b[0m`;
@@ -15,6 +21,10 @@ function getStatusIcon(status) {
 async function run() {
   console.log(`\n🩺  ${bold("Soroban Explorer Environment Doctor")}\n`);
 
+  if (!runAllChecks) {
+    console.error(red("doctor-lib.js not available — run npm install in indexer first"));
+    process.exit(1);
+  }
   let checks;
   try {
     checks = await runAllChecks();

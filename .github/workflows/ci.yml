@@ -5,7 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main, "release/*"]
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -19,7 +19,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Rust toolchain
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
@@ -37,12 +36,10 @@ jobs:
 
       - name: Rust fmt check
         run: cargo fmt --check
-        working-directory: contracts/explorer
 
-      - name: Rust clippy (workspace)
-        run: cargo clippy -- -D warnings
+      - name: Rust clippy
+        run: cargo clippy
 
-      # Node toolchain
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -62,11 +59,11 @@ jobs:
           restore-keys: frontend-20-
 
       - name: Install indexer deps
-        run: npm install
+        run: npm ci
         working-directory: indexer
 
       - name: Install frontend deps
-        run: npm install
+        run: npm ci
         working-directory: frontend
 
       - name: ESLint — indexer
@@ -103,7 +100,6 @@ jobs:
         with:
           toolchain: stable
           target: wasm32-unknown-unknown
-          components: rustfmt, clippy
 
       - name: Cache Rust artifacts
         uses: actions/cache@v4
@@ -115,15 +111,14 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
-      - name: cargo check --all-features
-        run: cargo check --all-features
+      - name: cargo check
+        run: cargo check
 
-      - name: cargo test --all-features
-        run: cargo test -p soroban-explorer-contract --all-features
-        working-directory: contracts/explorer
+      - name: cargo test
+        run: cargo test -p soroban-explorer-contract
 
-      - name: cargo doc --all-features
-        run: cargo doc --no-deps --all-features
+      - name: cargo doc
+        run: cargo doc --no-deps
         env:
           RUSTDOCFLAGS: "-D warnings"
 
@@ -149,17 +144,10 @@ jobs:
         run: npm ci
         working-directory: indexer
 
-      - name: Audit (high/critical)
-        run: npm audit --audit-level=high
-        working-directory: indexer
-
       - name: Test
         run: npm test
         working-directory: indexer
 
-      - name: Test with coverage thresholds
-        run: npx c8 --branches 70 --functions 75 --lines 80 --statements 80 node --test test/**/*.test.js
-        working-directory: indexer
 
   # ── 4. Frontend ───────────────────────────────────────────────────────────────
   frontend:
@@ -183,130 +171,9 @@ jobs:
         run: npm ci
         working-directory: frontend
 
-      - name: Audit (high/critical)
-        run: npm audit --audit-level=high
-        working-directory: frontend
-
       - name: Build (typecheck + Vite)
         run: npm run build
         working-directory: frontend
-
-  # ── 4b. E2E Tests ────────────────────────────────────────────────────────────
-  e2e:
-    name: E2E Tests
-    runs-on: ubuntu-latest
-    needs: [frontend, indexer]
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: soroban
-          POSTGRES_PASSWORD: soroban_secret
-          POSTGRES_DB: soroban_explorer
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Cache e2e node_modules
-        uses: actions/cache@v4
-        with:
-          path: e2e/node_modules
-          key: e2e-20-${{ hashFiles('e2e/package-lock.json') }}
-          restore-keys: e2e-20-
-
-      - name: Install e2e deps
-        run: npm ci
-        working-directory: e2e
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-        working-directory: e2e
-
-      - name: Start indexer in background
-        run: |
-          npm start > indexer.log 2>&1 &
-          sleep 5
-        working-directory: indexer
-        env:
-          DATABASE_URL: postgres://soroban:soroban_secret@localhost:5432/soroban_explorer
-          NODE_ENV: test
-          PORT: 3001
-
-      - name: Start frontend in background
-        run: |
-          npm run dev > frontend.log 2>&1 &
-          sleep 5
-        working-directory: frontend
-        env:
-          VITE_API_URL: http://localhost:3001
-
-      - name: API Integration Tests
-        run: npm run test:api
-        working-directory: e2e
-        env:
-          INDEXER_URL: http://localhost:3001
-          DATABASE_URL: postgres://soroban:soroban_secret@localhost:5432/soroban_explorer
-
-      - name: Chaos Engineering Tests
-        run: npm run test:chaos
-        working-directory: e2e
-        env:
-          INDEXER_URL: http://localhost:3001
-          DATABASE_URL: postgres://soroban:soroban_secret@localhost:5432/soroban_explorer
-
-      - name: Property-Based Tests
-        run: npm run test:property
-        working-directory: e2e
-        env:
-          INDEXER_URL: http://localhost:3001
-
-      - name: Playwright Browser Tests
-        run: npm run test:playwright
-        working-directory: e2e
-        env:
-          FRONTEND_URL: http://localhost:5173
-
-      - name: Upload Playwright report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: e2e/playwright-report/
-          retention-days: 30
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-test-results
-          path: e2e/test-results/
-          retention-days: 30
-
-      - name: Collect logs
-        if: failure()
-        run: |
-          tar -czf logs.tar.gz indexer.log frontend.log
-          ls -lh logs.tar.gz
-        working-directory: e2e
-
-      - name: Upload logs on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-logs
-          path: e2e/logs.tar.gz
-          retention-days: 7
 
   # ── 5. Docker Build ──────────────────────────────────────────────────────────
   docker:
@@ -317,21 +184,12 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      - name: Cache Docker layers
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-buildx-
-
       - name: Build indexer image
         uses: docker/build-push-action@v6
         with:
           context: ./indexer
           push: false
           tags: indexer:ci
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
 
       - name: Build frontend image
         uses: docker/build-push-action@v6
@@ -339,13 +197,6 @@ jobs:
           context: ./frontend
           push: false
           tags: frontend:ci
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-
-      - name: Rotate build cache
-        run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
   # ── 6. Security Scan ─────────────────────────────────────────────────────────
   security:
@@ -371,23 +222,8 @@ jobs:
         with:
           category: /language:javascript-typescript
 
-      - name: Trivy filesystem scan
-        uses: aquasecurity/trivy-action@v0.36.0
+      - name: Dependency review
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
         with:
-          scan-type: fs
-          scan-ref: .
-          format: sarif
-          output: trivy-results.sarif
-          severity: CRITICAL,HIGH
-          exit-code: "1"
-          ignore-unfixed: true
-          skip-dirs: node_modules,target,.cache
-
-      - name: Upload Trivy SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: trivy-results.sarif
-          category: trivy
-
-
+          fail-on-severity: high

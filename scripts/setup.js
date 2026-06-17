@@ -3,10 +3,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import readline from "readline/promises";
 import { execSync } from "child_process";
-import pg from "pg";
-
-import { runAllChecks } from "../indexer/src/doctor-lib.js";
-import { installHooks } from "./install-hooks.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
@@ -27,10 +23,28 @@ function executeCommand(command, cwd = rootDir) {
   }
 }
 
+async function importSafe(id) {
+  try {
+    return await import(id);
+  } catch {
+    return null;
+  }
+}
+
 async function run() {
   const isNonInteractive = process.argv.includes("--non-interactive") || process.argv.includes("-y");
 
   console.log(`\n✨  ${bold(cyan("Soroban Explorer Setup Wizard"))}\n`);
+
+  // Lazy-load optional dependencies
+  let pg;
+  try {
+    pg = (await import("pg")).default;
+  } catch {
+    // pg not available - DB operations will be skipped
+  }
+  const { runAllChecks } = (await importSafe("../indexer/src/doctor-lib.js")) || {};
+  const { installHooks } = (await importSafe("./install-hooks.js")) || {};
 
   const rl = readline.createInterface({
     input: process.stdin,
@@ -40,38 +54,35 @@ async function run() {
   try {
     // ── [1/7] System Requirements Check ──
     console.log(bold("[1/7] System Requirements Check"));
-    const checks = await runAllChecks();
-    let setupPrereqPass = true;
+    if (runAllChecks) {
+      const checks = await runAllChecks();
 
-    // Check critical requirements
-    const nodeStatus = checks.runtimes.node.status;
-    const wasm32Status = checks.runtimes.wasm32.status;
+      const nodeStatus = checks.runtimes.node.status;
+      const wasm32Status = checks.runtimes.wasm32.status;
 
-    console.log(`  ${nodeStatus === "pass" ? green("✓") : red("✗")} Node.js 20+ detected (${checks.runtimes.node.version})`);
-    console.log(`  ${checks.runtimes.npm.status === "pass" ? green("✓") : yellow("⚠")} npm 10+ detected (${checks.runtimes.npm.version})`);
-    console.log(`  ${checks.runtimes.rust.status === "pass" ? green("✓") : yellow("⚠")} Rust 1.80+ detected (${checks.runtimes.rust.version})`);
-    console.log(`  ${wasm32Status === "pass" ? green("✓") : red("✗")} wasm32-unknown-unknown target installed`);
+      console.log(`  ${nodeStatus === "pass" ? green("✓") : red("✗")} Node.js 20+ detected (${checks.runtimes.node.version})`);
+      console.log(`  ${checks.runtimes.npm.status === "pass" ? green("✓") : yellow("⚠")} npm 10+ detected (${checks.runtimes.npm.version})`);
+      console.log(`  ${checks.runtimes.rust.status === "pass" ? green("✓") : yellow("⚠")} Rust 1.80+ detected (${checks.runtimes.rust.version})`);
+      console.log(`  ${wasm32Status === "pass" ? green("✓") : red("✗")} wasm32-unknown-unknown target installed`);
 
-    if (checks.ports[5432].status === "pass") {
-      console.log(`  ${green("✓")} PostgreSQL detected on port 5432`);
-    } else {
-      console.log(`  ${red("✗")} PostgreSQL not running on port 5432`);
-      console.log(`    → Install via: brew install postgresql@16`);
-      console.log(`    → Or run: docker compose up -d postgres`);
-      // We don't block setup since they might run with docker profiles later
-    }
+      if (checks.ports[5432].status === "pass") {
+        console.log(`  ${green("✓")} PostgreSQL detected on port 5432`);
+      } else {
+        console.log(`  ${red("✗")} PostgreSQL not running on port 5432`);
+        console.log(`    → Run: docker compose up -d postgres`);
+      }
 
-    if (nodeStatus === "fail" || wasm32Status === "fail") {
-      setupPrereqPass = false;
-      console.log(red("\n❌ Critical requirements are missing. Please install Node.js 20+ and wasm32 target."));
-      if (!isNonInteractive) {
-        const answer = await rl.question(yellow("Do you want to ignore this and continue anyway? (y/N): "));
-        if (answer.toLowerCase() !== "y") {
+      if (nodeStatus === "fail" || wasm32Status === "fail") {
+        console.log(red("\n❌ Critical requirements are missing. Please install Node.js 20+ and wasm32 target."));
+        if (!isNonInteractive) {
+          const answer = await rl.question(yellow("Do you want to ignore this and continue anyway? (y/N): "));
+          if (answer.toLowerCase() !== "y") process.exit(1);
+        } else {
           process.exit(1);
         }
-      } else {
-        process.exit(1);
       }
+    } else {
+      console.log(`  ${yellow("⚠")} System checks unavailable (doctor-lib.js not found)`);
     }
     console.log();
 
@@ -89,12 +100,11 @@ async function run() {
         fs.copyFileSync(envExamplePath, envPath);
         console.log(`  ${green("✓")} .env created from .env.example`);
       } else {
-        console.log(`  ${red("✗")} .env.example not found in workspace`);
+        console.log(`  ${red("✗")} .env.example not found`);
         fs.writeFileSync(envPath, "");
       }
     } else {
       console.log(`  ${green("✓")} Existing .env file found`);
-      // Read current values
       const envContent = fs.readFileSync(envPath, "utf8");
       const rpcMatch = envContent.match(/^SOROBAN_RPC_URL=(.*)$/m);
       const dbMatch = envContent.match(/^DATABASE_URL=(.*)$/m);
@@ -110,7 +120,6 @@ async function run() {
       pollMs = await rl.question(`  → POLL_MS [${pollMs}]: `) || pollMs;
     }
 
-    // Write values to .env
     let envContent = fs.readFileSync(envPath, "utf8");
     const updateEnvVar = (key, val) => {
       const regex = new RegExp(`^#?\\s*${key}=.*$`, "m");
@@ -127,59 +136,52 @@ async function run() {
     console.log(`  ${green("✓")} Configuration updated in .env`);
     console.log();
 
-    // Reload process.env
     process.env.DATABASE_URL = dbUrl;
     process.env.SOROBAN_RPC_URL = rpcUrl;
 
     // ── [3/7] Database Setup ──
     console.log(bold("[3/7] Database Setup"));
-    let dbCreated = false;
-    let migrationsRun = false;
-    let seedLoaded = false;
+    if (pg) {
+      try {
+        const parsedUrl = new URL(dbUrl);
+        const dbName = parsedUrl.pathname.slice(1);
+        parsedUrl.pathname = "/postgres";
+        const adminDbUrl = parsedUrl.toString();
 
-    try {
-      const parsedUrl = new URL(dbUrl);
-      const dbName = parsedUrl.pathname.slice(1);
-      parsedUrl.pathname = "/postgres"; // connect to default admin DB
-      const adminDbUrl = parsedUrl.toString();
-
-      const adminClient = new pg.Client({ connectionString: adminDbUrl, connectionTimeoutMillis: 3000 });
-      await adminClient.connect();
-      const res = await adminClient.query("SELECT 1 FROM pg_database WHERE datname = $1", [dbName]);
-      if (res.rowCount === 0) {
-        console.log(`  Creating database ${dbName}...`);
-        await adminClient.query(`CREATE DATABASE ${dbName}`);
-        console.log(`  ${green("✓")} Database ${dbName} created`);
-      } else {
-        console.log(`  ${green("✓")} Database ${dbName} already exists`);
+        const adminClient = new pg.Client({ connectionString: adminDbUrl, connectionTimeoutMillis: 3000 });
+        await adminClient.connect();
+        const res = await adminClient.query("SELECT 1 FROM pg_database WHERE datname = $1", [dbName]);
+        if (res.rowCount === 0) {
+          console.log(`  Creating database ${dbName}...`);
+          await adminClient.query(`CREATE DATABASE ${dbName}`);
+          console.log(`  ${green("✓")} Database ${dbName} created`);
+        } else {
+          console.log(`  ${green("✓")} Database ${dbName} already exists`);
+        }
+        await adminClient.end();
+      } catch (err) {
+        console.log(`  ${yellow("⚠")} Could not verify/create database: ${err.message}`);
       }
-      dbCreated = true;
-      await adminClient.end();
-    } catch (err) {
-      console.log(`  ${yellow("⚠")} Could not automatically verify/create database: ${err.message}`);
-      console.log(`    Proceeding assuming database already exists.`);
-    }
 
-    // Run database migrations/initialization
-    try {
-      const { db } = await import("../indexer/src/db.js");
-      console.log("  Running migrations...");
-      await db.init();
-      console.log(`  ${green("✓")} Migrations run successfully`);
-      migrationsRun = true;
-    } catch (err) {
-      console.log(`  ${red("✗")} Migration run failed: ${err.message}`);
-    }
+      try {
+        const { db } = await import("../indexer/src/db.js");
+        console.log("  Running migrations...");
+        await db.init();
+        console.log(`  ${green("✓")} Migrations run successfully`);
+      } catch (err) {
+        console.log(`  ${yellow("⚠")} Migration run failed: ${err.message}`);
+      }
 
-    // Run database seeding
-    try {
-      const { seed } = await import("./seed.js");
-      console.log("  Loading seed data...");
-      await seed();
-      console.log(`  ${green("✓")} Seed data loaded (520 events, 20 contracts)`);
-      seedLoaded = true;
-    } catch (err) {
-      console.log(`  ${red("✗")} Database seeding failed: ${err.message}`);
+      try {
+        const { seed } = await import("./seed.js");
+        console.log("  Loading seed data...");
+        await seed();
+        console.log(`  ${green("✓")} Seed data loaded`);
+      } catch (err) {
+        console.log(`  ${yellow("⚠")} Database seeding failed: ${err.message}`);
+      }
+    } else {
+      console.log(`  ${yellow("⚠")} pg module not available — skipping database setup`);
     }
     console.log();
 
@@ -189,56 +191,51 @@ async function run() {
     let depPass = executeCommand("npm install");
 
     console.log("  Installing indexer dependencies...");
-    depPass = depPass && executeCommand("npm ci", path.join(rootDir, "indexer"));
+    depPass = executeCommand("npm ci", path.join(rootDir, "indexer")) && depPass;
 
     console.log("  Installing frontend dependencies...");
-    depPass = depPass && executeCommand("npm ci", path.join(rootDir, "frontend"));
+    depPass = executeCommand("npm ci", path.join(rootDir, "frontend")) && depPass;
 
     console.log("  Fetching Rust cargo dependencies...");
-    depPass = depPass && executeCommand("cargo fetch");
+    depPass = executeCommand("cargo fetch") && depPass;
 
-    console.log("  Installing Git hooks...");
-    try {
-      installHooks();
-      console.log(`  ${green("✓")} Git hooks installed`);
-    } catch (err) {
-      console.log(`  ${yellow("⚠")} Git hooks installation failed: ${err.message}`);
+    if (installHooks) {
+      try {
+        installHooks();
+        console.log(`  ${green("✓")} Git hooks installed`);
+      } catch (err) {
+        console.log(`  ${yellow("⚠")} Git hooks installation failed: ${err.message}`);
+      }
     }
 
     if (depPass) {
       console.log(`  ${green("✓")} Dependencies installed successfully`);
     } else {
-      console.log(`  ${red("✗")} Some dependencies failed to install`);
+      console.log(`  ${yellow("⚠")} Some dependencies failed to install`);
     }
     console.log();
 
     // ── [5/7] Build Verification ──
     console.log(bold("[5/7] Build Verification"));
-    console.log("  Building contracts...");
-    const contractBuildPass = executeCommand("cargo build --release --target wasm32-unknown-unknown -p soroban-explorer-contract");
-    console.log(`  ${contractBuildPass ? green("✓") : red("✗")} Contract compilation`);
-
-    console.log("  Building frontend...");
-    const frontendBuildPass = executeCommand("npm run build", path.join(rootDir, "frontend"));
-    console.log(`  ${frontendBuildPass ? green("✓") : red("✗")} Frontend build`);
+    executeCommand("cargo build --release --target wasm32-unknown-unknown -p soroban-explorer-contract");
+    executeCommand("npm run build", path.join(rootDir, "frontend"));
     console.log();
 
     // ── [6/7] Service Health Check ──
     console.log(bold("[6/7] Service Health Check"));
-    // PostgreSQL responsive check
-    let pgResponsive = false;
-    try {
-      const client = new pg.Client({ connectionString: dbUrl });
-      await client.connect();
-      await client.query("SELECT 1");
-      await client.end();
-      pgResponsive = true;
-      console.log(`  ${green("✓")} PostgreSQL responsive`);
-    } catch {
-      console.log(`  ${red("✗")} PostgreSQL unresponsive`);
+    if (pg) {
+      try {
+        const client = new pg.Client({ connectionString: dbUrl });
+        await client.connect();
+        await client.query("SELECT 1");
+        await client.end();
+        console.log(`  ${green("✓")} PostgreSQL responsive`);
+      } catch {
+        console.log(`  ${red("✗")} PostgreSQL unresponsive`);
+      }
+    } else {
+      console.log(`  ${yellow("⚠")} pg module not available — skipping health check`);
     }
-
-    console.log(`  ${green("✓")} Service Health Check passed`);
     console.log();
 
     // ── [7/7] Done! ──

@@ -1,5 +1,5 @@
 {
-  "name": "Soroban Smart Block Explorer Development",
+  "name": "Soroban Smart Block Explorer",
   "image": "mcr.microsoft.com/devcontainers/rust:1",
   "features": {
     "ghcr.io/devcontainers/features/node:1": {
@@ -20,7 +20,7 @@
       "onAutoForward": "silent"
     },
     "5432": {
-      "label": "PostgreSQL Database",
+      "label": "PostgreSQL",
       "onAutoForward": "silent"
     }
   },
@@ -34,5 +34,6 @@
       ]
     }
   },
-  "postCreateCommand": "rustup target add wasm32-unknown-unknown && npm run setup -- --non-interactive"
+  "postCreateCommand": "rustup target add wasm32-unknown-unknown && npm install && npm --prefix indexer ci && npm --prefix frontend ci && cargo fetch",
+  "postStartCommand": "npm run setup -- --non-interactive || echo 'Setup incomplete - run npm run setup manually when ready'"
 }

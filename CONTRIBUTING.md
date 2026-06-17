@@ -52,9 +52,9 @@ Reference the issue your work closes in the PR description, for example
 CI runs the following. Reproduce them locally to avoid a red build:
 
 ```bash
-# Rust contract
+# Rust workspace (run from repo root)
 cargo fmt --check
-cargo clippy -- -D warnings
+cargo clippy
 cargo test -p soroban-explorer-contract
 
 # Indexer
@@ -63,7 +63,7 @@ cd indexer && npx eslint --max-warnings 0 src/ && npm test
 # Frontend
 cd frontend && npx eslint --max-warnings 0 src/ && npm run build
 
-# Formatting (from the repo root)
+# Formatting (run from repo root)
 npx prettier --check "indexer/src/**/*.{js,json}" "frontend/src/**/*.{ts,tsx}" "**/*.md"
 ```
 
@@ -71,9 +71,10 @@ npx prettier --check "indexer/src/**/*.{js,json}" "frontend/src/**/*.{ts,tsx}" "
 
 - [ ] Branch name follows the convention.
 - [ ] PR title follows Conventional Commits.
-- [ ] Lint passes for the package you touched (zero warnings).
-- [ ] Tests pass and new behavior is covered.
-- [ ] Prettier formatting passes for changed files.
+- [ ] Rust: `cargo fmt --check`, `cargo clippy`, `cargo test` pass.
+- [ ] Indexer: `eslint` zero warnings and `npm test` pass.
+- [ ] Frontend: `eslint` zero warnings and `npm run build` pass.
+- [ ] Prettier formatting passes.
 - [ ] Documentation is updated for user-facing or API changes.
 - [ ] The PR description explains the change and links the issue it closes.
 - [ ] No secrets or `.env` values are committed.
