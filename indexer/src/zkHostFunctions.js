@@ -1,5 +1,5 @@
 /**
- * Issue #164 — CAP-0080 Protocol 26 ZK host function telemetry.
+ * CAP-0080 Protocol 26 ZK host function telemetry.
  *
  * Detects BN254 and BLS12-381 host function calls from the Soroban execution
  * trace and computes a cost delta showing how much cheaper the native
@@ -17,13 +17,23 @@
 // CAP-0080 native host function names (Protocol 26+)
 const ZK_HOST_FN_NAMES = new Set([
   // BN254
-  "bn254_g1_msm", "bn254_g2_msm", "bn254_pairing_check",
-  "bn254_fr_add",  "bn254_fr_mul",  "bn254_fr_inv",
+  "bn254_g1_msm",
+  "bn254_g2_msm",
+  "bn254_pairing_check",
+  "bn254_fr_add",
+  "bn254_fr_mul",
+  "bn254_fr_inv",
   // BLS12-381
-  "bls12_381_g1_msm", "bls12_381_g2_msm", "bls12_381_pairing_check",
-  "bls12_381_fr_add",  "bls12_381_fr_mul",  "bls12_381_fr_inv",
-  "bls12_381_map_fp_to_g1", "bls12_381_map_fp2_to_g2",
-  "bls12_381_hash_to_g1",   "bls12_381_hash_to_g2",
+  "bls12_381_g1_msm",
+  "bls12_381_g2_msm",
+  "bls12_381_pairing_check",
+  "bls12_381_fr_add",
+  "bls12_381_fr_mul",
+  "bls12_381_fr_inv",
+  "bls12_381_map_fp_to_g1",
+  "bls12_381_map_fp2_to_g2",
+  "bls12_381_hash_to_g1",
+  "bls12_381_hash_to_g2",
 ]);
 
 /**
@@ -33,45 +43,45 @@ const ZK_HOST_FN_NAMES = new Set([
  */
 const LEGACY_WASM_COST = {
   // BN254
-  bn254_g1_msm:          2_500_000,
-  bn254_g2_msm:          5_000_000,
-  bn254_pairing_check:   8_000_000,
-  bn254_fr_add:             10_000,
-  bn254_fr_mul:             50_000,
-  bn254_fr_inv:            200_000,
+  bn254_g1_msm: 2_500_000,
+  bn254_g2_msm: 5_000_000,
+  bn254_pairing_check: 8_000_000,
+  bn254_fr_add: 10_000,
+  bn254_fr_mul: 50_000,
+  bn254_fr_inv: 200_000,
   // BLS12-381
-  bls12_381_g1_msm:      4_000_000,
-  bls12_381_g2_msm:      8_000_000,
+  bls12_381_g1_msm: 4_000_000,
+  bls12_381_g2_msm: 8_000_000,
   bls12_381_pairing_check: 12_000_000,
-  bls12_381_fr_add:          15_000,
-  bls12_381_fr_mul:          80_000,
-  bls12_381_fr_inv:         300_000,
-  bls12_381_map_fp_to_g1:   500_000,
-  bls12_381_map_fp2_to_g2:  900_000,
-  bls12_381_hash_to_g1:   1_200_000,
-  bls12_381_hash_to_g2:   2_000_000,
+  bls12_381_fr_add: 15_000,
+  bls12_381_fr_mul: 80_000,
+  bls12_381_fr_inv: 300_000,
+  bls12_381_map_fp_to_g1: 500_000,
+  bls12_381_map_fp2_to_g2: 900_000,
+  bls12_381_hash_to_g1: 1_200_000,
+  bls12_381_hash_to_g2: 2_000_000,
 };
 
 /**
  * Native host function CPU cost (Protocol 26 metered cost from CAP-0080).
  */
 const NATIVE_HOST_COST = {
-  bn254_g1_msm:            150_000,
-  bn254_g2_msm:            300_000,
-  bn254_pairing_check:     500_000,
-  bn254_fr_add:              1_000,
-  bn254_fr_mul:              3_000,
-  bn254_fr_inv:             12_000,
-  bls12_381_g1_msm:        250_000,
-  bls12_381_g2_msm:        500_000,
+  bn254_g1_msm: 150_000,
+  bn254_g2_msm: 300_000,
+  bn254_pairing_check: 500_000,
+  bn254_fr_add: 1_000,
+  bn254_fr_mul: 3_000,
+  bn254_fr_inv: 12_000,
+  bls12_381_g1_msm: 250_000,
+  bls12_381_g2_msm: 500_000,
   bls12_381_pairing_check: 800_000,
-  bls12_381_fr_add:          1_500,
-  bls12_381_fr_mul:          5_000,
-  bls12_381_fr_inv:         18_000,
-  bls12_381_map_fp_to_g1:   30_000,
-  bls12_381_map_fp2_to_g2:  55_000,
-  bls12_381_hash_to_g1:     80_000,
-  bls12_381_hash_to_g2:    130_000,
+  bls12_381_fr_add: 1_500,
+  bls12_381_fr_mul: 5_000,
+  bls12_381_fr_inv: 18_000,
+  bls12_381_map_fp_to_g1: 30_000,
+  bls12_381_map_fp2_to_g2: 55_000,
+  bls12_381_hash_to_g1: 80_000,
+  bls12_381_hash_to_g2: 130_000,
 };
 
 /**
@@ -118,13 +128,15 @@ export function parseZkHostFunctions(ev) {
         calls.push(buildCall(fnName, de));
       }
     }
-  } catch { /* XDR not available */ }
+  } catch {
+    /* XDR not available */
+  }
 
   if (calls.length === 0) return null;
 
   // Deduplicate by fn_name+index to avoid double-counting across sources
   const seen = new Set();
-  const unique = calls.filter(c => {
+  const unique = calls.filter((c) => {
     const key = `${c.fn_name}:${c.cpu_native}`;
     if (seen.has(key)) return false;
     seen.add(key);
@@ -154,16 +166,21 @@ export function computeZkCostDelta(calls) {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function buildCall(fnName, source) {
+function buildCall(fnName, _source) {
   const cpu_native = NATIVE_HOST_COST[fnName] ?? 0;
   const cpu_legacy = LEGACY_WASM_COST[fnName] ?? 0;
   const curve = fnName.startsWith("bn254") ? "BN254" : "BLS12-381";
-  const kind  = fnName.includes("msm") ? "msm"
-              : fnName.includes("pairing") ? "pairing"
-              : fnName.includes("fr_") ? "scalar_field"
-              : fnName.includes("map_") ? "map_to_curve"
-              : fnName.includes("hash_") ? "hash_to_curve"
-              : "other";
+  const kind = fnName.includes("msm")
+    ? "msm"
+    : fnName.includes("pairing")
+      ? "pairing"
+      : fnName.includes("fr_")
+        ? "scalar_field"
+        : fnName.includes("map_")
+          ? "map_to_curve"
+          : fnName.includes("hash_")
+            ? "hash_to_curve"
+            : "other";
 
   return { fn_name: fnName, curve, kind, cpu_native, cpu_legacy };
 }
@@ -171,14 +188,17 @@ function buildCall(fnName, source) {
 function extractDiagFnName(de) {
   // JSON diagnostic event: { event: { body: { v0: { data: { sym: "fn_name" } } } } }
   try {
-    const sym = de?.event?.body?.v0?.data?.sym
-             ?? de?.event?.body?.v0?.data?.[0]
-             ?? de?.body?.v0?.data?.sym
-             ?? de?.fn_name
-             ?? de?.name
-             ?? null;
+    const sym =
+      de?.event?.body?.v0?.data?.sym ??
+      de?.event?.body?.v0?.data?.[0] ??
+      de?.body?.v0?.data?.sym ??
+      de?.fn_name ??
+      de?.name ??
+      null;
     return typeof sym === "string" ? sym : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 function extractXdrDiagFnName(de) {
@@ -188,7 +208,9 @@ function extractXdrDiagFnName(de) {
     // ScVal sym
     const sym = data.sym?.() ?? data.value?.sym?.() ?? null;
     return typeof sym === "string" ? sym : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 /**

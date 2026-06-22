@@ -1,3 +1,4 @@
+/* global fetch */
 const CRATES_API_BASE = "https://crates.io/api/v1/crates";
 
 const FRAMEWORK_DEPENDENCIES = [
@@ -22,16 +23,20 @@ function normalizeVersionSpec(value) {
   version = version.split(/\s*\|\|\s*/)[0];
   version = version.split(/\s*\+\s*/)[0];
   version = version.split(/\s*;\s*/)[0];
-  version = version.split(/[\s\[]/)[0];
+  version = version.split(/[\s[]/)[0];
   if (!version) return null;
   return version;
 }
 
 function compareSemver(a, b) {
-  const norm = version => String(version || "").split(".").slice(0, 3).map(part => {
-    const num = Number(part.replace(/[^0-9].*$/, ""));
-    return Number.isNaN(num) ? 0 : num;
-  });
+  const norm = (version) =>
+    String(version || "")
+      .split(".")
+      .slice(0, 3)
+      .map((part) => {
+        const num = Number(part.replace(/[^0-9].*$/, ""));
+        return Number.isNaN(num) ? 0 : num;
+      });
 
   const aParts = norm(a);
   const bParts = norm(b);
@@ -57,7 +62,7 @@ function parseCargoTomlDependencies(content) {
     }
     if (!/^(dependencies|dev-dependencies|build-dependencies)$/.test(currentSection)) continue;
 
-    const depMatch = line.match(/^([A-Za-z0-9_\-]+)\s*=\s*(.+)$/);
+    const depMatch = line.match(/^([A-Za-z0-9_-]+)\s*=\s*(.+)$/);
     if (!depMatch) continue;
     const name = depMatch[1].trim();
     let rawValue = depMatch[2].trim();
@@ -97,7 +102,7 @@ async function fetchLatestCrateVersion(crateName) {
 export async function analyzeSourceDependencies(sourceFiles = []) {
   if (!Array.isArray(sourceFiles) || sourceFiles.length === 0) return null;
 
-  const cargoFiles = sourceFiles.filter(file => file.path.toLowerCase().endsWith("cargo.toml"));
+  const cargoFiles = sourceFiles.filter((file) => file.path.toLowerCase().endsWith("cargo.toml"));
   if (!cargoFiles.length) return null;
 
   const packages = [];
@@ -106,7 +111,11 @@ export async function analyzeSourceDependencies(sourceFiles = []) {
     for (const pkg of FRAMEWORK_DEPENDENCIES) {
       const current = deps[pkg.name];
       if (current) {
-        packages.push({ name: pkg.name, currentVersion: current, upgradeUrl: pkg.upgradeUrl });
+        packages.push({
+          name: pkg.name,
+          currentVersion: current,
+          upgradeUrl: pkg.upgradeUrl,
+        });
       }
     }
   }

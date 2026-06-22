@@ -28,9 +28,7 @@ function keyToString(key) {
  */
 function writeKeysOf(ev) {
   const footprintXdr =
-    ev.transaction?.envelope?.v1?.tx?.ext?.sorobanData?.resources?.footprint ??
-    ev.footprintXdr ??
-    null;
+    ev.transaction?.envelope?.v1?.tx?.ext?.sorobanData?.resources?.footprint ?? ev.footprintXdr ?? null;
 
   if (!footprintXdr) return new Set();
 
@@ -59,7 +57,7 @@ export function scanFootprintContention(events) {
   // Preserve insertion order (Map keeps order).
   const txOrder = [];
   const txWriteKeys = new Map(); // tx_hash → Set<string>
-  const txEvents    = new Map(); // tx_hash → event[]
+  const txEvents = new Map(); // tx_hash → event[]
 
   for (const ev of events) {
     const hash = ev.txHash ?? ev.tx_hash ?? "";
@@ -73,7 +71,7 @@ export function scanFootprintContention(events) {
 
   // Compare each tx's write keys against the immediately preceding tx.
   for (let i = 0; i < txOrder.length; i++) {
-    const hash    = txOrder[i];
+    const hash = txOrder[i];
     const contention = i > 0 && setsIntersect(txWriteKeys.get(hash), txWriteKeys.get(txOrder[i - 1]));
     for (const ev of txEvents.get(hash)) {
       ev.footprint_contention = contention;

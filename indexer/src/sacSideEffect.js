@@ -1,8 +1,11 @@
+/* global fetch, AbortSignal */
 /**
  * SAC side-effect detection.
  *
  * When the Stellar Asset Contract transfers tokens to a G-address that either:
  *   (a) does not exist on-chain yet  → "SAC Auto-Created Account Entry"
+ * @global fetch
+ * @global AbortSignal
  *   (b) exists but has no trustline  → "SAC Native Trustline Open"
  *
  * We probe Horizon once per (address, assetCode) pair and cache the result for
@@ -49,7 +52,7 @@ export async function classifySacSideEffect(toAddress, assetCode, assetIssuer) {
       } else {
         // Check whether the trustline for this asset already exists
         const hasTrustline = account.balances?.some(
-          b => b.asset_code === assetCode && b.asset_issuer === assetIssuer
+          (b) => b.asset_code === assetCode && b.asset_issuer === assetIssuer,
         );
         result = hasTrustline ? null : "trustline_opened";
       }

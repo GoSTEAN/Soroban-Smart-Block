@@ -1,5 +1,5 @@
 /**
- * Issue #138 — Ledger Ingestion Gap Detection Script
+ * Ledger Ingestion Gap Detection Script
  *
  * Scans the indexed ledger range for any missing ledger_sequence values
  * and triggers a targeted catchup resync for each gap found.
@@ -35,7 +35,7 @@ export async function findLedgerGaps() {
   const { rows: rangeRows } = await db.query(
     `SELECT MIN(ledger)::BIGINT AS min_ledger,
             MAX(ledger)::BIGINT AS max_ledger
-     FROM events`
+     FROM events`,
   );
 
   const { min_ledger, max_ledger } = rangeRows[0];
@@ -56,10 +56,10 @@ export async function findLedgerGaps() {
      ) e ON e.ledger = s.ledger
      WHERE e.ledger IS NULL
      ORDER BY s.ledger`,
-    [min_ledger, max_ledger]
+    [min_ledger, max_ledger],
   );
 
-  return rows.map(r => Number(r.missing_ledger));
+  return rows.map((r) => Number(r.missing_ledger));
 }
 
 /**
@@ -91,11 +91,10 @@ function resyncGaps(gaps) {
 
   for (const [from, to] of ranges) {
     console.log(`[gapDetector] Resyncing ledgers ${from} → ${to}`);
-    const result = spawnSync(
-      process.execPath,
-      [catchupScript, `--from=${from}`, `--to=${to}`],
-      { stdio: "inherit", env: process.env }
-    );
+    const result = spawnSync(process.execPath, [catchupScript, `--from=${from}`, `--to=${to}`], {
+      stdio: "inherit",
+      env: process.env,
+    });
     if (result.status !== 0) {
       console.error(`[gapDetector] catchup failed for range ${from}-${to} (exit ${result.status})`);
     }
@@ -125,7 +124,7 @@ async function main() {
   process.exit(0);
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error("[gapDetector] Fatal:", err);
   process.exit(1);
 });

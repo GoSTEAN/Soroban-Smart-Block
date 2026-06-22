@@ -114,7 +114,9 @@ function formatSideBySide(diff) {
       lines.push(`     |${" ".repeat(40)} | ${newIdx.toString().padStart(4)} | ${item.content}`);
       newIdx++;
     } else {
-      lines.push(`${oldIdx.toString().padStart(4)} | ${item.content.padEnd(40)} | ${newIdx.toString().padStart(4)} | ${item.content}`);
+      lines.push(
+        `${oldIdx.toString().padStart(4)} | ${item.content.padEnd(40)} | ${newIdx.toString().padStart(4)} | ${item.content}`,
+      );
       oldIdx++;
       newIdx++;
     }

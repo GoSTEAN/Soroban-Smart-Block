@@ -9,8 +9,6 @@
  * or null when the transaction is not an upgrade.
  */
 
-import { xdr } from "@stellar/stellar-sdk";
-
 /**
  * Extract the hex-encoded WASM hash from a ContractDataEntry whose val is
  * scvContractInstance. Returns null if the entry is not a WASM instance.
@@ -50,7 +48,7 @@ export function detectUpgrade(ev) {
     // Collect state (before) and updated (after) contractInstance entries keyed
     // by their contract address hex so we can pair them.
     const before = new Map(); // contractHex → wasmHash
-    const after  = new Map();
+    const after = new Map();
 
     for (const change of changes) {
       try {
@@ -69,9 +67,11 @@ export function detectUpgrade(ev) {
 
         const contractHex = Buffer.from(contractData.contract().contractId()).toString("hex");
 
-        if (switchName === "ledgerEntryState")   before.set(contractHex, hash);
+        if (switchName === "ledgerEntryState") before.set(contractHex, hash);
         if (switchName === "ledgerEntryUpdated") after.set(contractHex, hash);
-      } catch { /* skip malformed entry */ }
+      } catch {
+        /* skip malformed entry */
+      }
     }
 
     // Find a contract whose hash changed between state and updated

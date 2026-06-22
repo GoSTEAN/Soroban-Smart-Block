@@ -1,5 +1,5 @@
 /**
- * Issue #114 — Bulk Block Processing Loader for Fast Ecosystem Resyncing
+ * Bulk Block Processing Loader for Fast Ecosystem Resyncing
  *
  * High-speed historical ledger importer. Uses concurrent workers and batch
  * DB inserts to achieve ≥500 blocks/second throughput.
@@ -21,14 +21,18 @@ const rpc = new SorobanRpc.Server(RPC_URL, { allowHttp: true });
 
 function parseArgs() {
   const args = Object.fromEntries(
-    process.argv.slice(2)
-      .filter(a => a.startsWith("--"))
-      .map(a => { const [k, v] = a.slice(2).split("="); return [k, v]; })
+    process.argv
+      .slice(2)
+      .filter((a) => a.startsWith("--"))
+      .map((a) => {
+        const [k, v] = a.slice(2).split("=");
+        return [k, v];
+      }),
   );
-  const from    = Number(args.from);
-  const to      = Number(args.to);
+  const from = Number(args.from);
+  const to = Number(args.to);
   const workers = Number(args.workers || 10);
-  const batch   = Number(args.batch   || 100);
+  const batch = Number(args.batch || 100);
 
   if (!from || !to || from > to) {
     console.error("Usage: node src/bulkLoader.js --from=<ledger> --to=<ledger> [--workers=10] [--batch=100]");
@@ -67,12 +71,14 @@ async function batchInsert(events) {
 
   // Build a multi-row INSERT … ON CONFLICT DO NOTHING
   const cols = ["contract_id", "function", "ledger", "tx_hash", "description", "raw_topics", "raw_data"];
-  const placeholders = events.map((_, i) => {
-    const base = i * cols.length;
-    return `(${cols.map((_, j) => `$${base + j + 1}`).join(", ")})`;
-  }).join(", ");
+  const placeholders = events
+    .map((_, i) => {
+      const base = i * cols.length;
+      return `(${cols.map((_, j) => `$${base + j + 1}`).join(", ")})`;
+    })
+    .join(", ");
 
-  const values = events.flatMap(e => [
+  const values = events.flatMap((e) => [
     e.contract_id,
     e.function,
     e.ledger,
@@ -82,10 +88,7 @@ async function batchInsert(events) {
     e.raw_data ?? null,
   ]);
 
-  await db.query(
-    `INSERT INTO events (${cols.join(", ")}) VALUES ${placeholders} ON CONFLICT DO NOTHING`,
-    values
-  );
+  await db.query(`INSERT INTO events (${cols.join(", ")}) VALUES ${placeholders} ON CONFLICT DO NOTHING`, values);
 }
 
 /** Worker: processes a list of ledgers, collecting events then batch-inserting. */
@@ -145,4 +148,7 @@ async function main() {
   process.exit(0);
 }
 
-main().catch(err => { console.error("[bulk-loader] fatal:", err); process.exit(1); });
+main().catch((err) => {
+  console.error("[bulk-loader] fatal:", err);
+  process.exit(1);
+});

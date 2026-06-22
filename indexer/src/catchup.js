@@ -1,5 +1,5 @@
 /**
- * Issue #36 — Historical Block Indexing Catch-Up Script
+ * Historical Block Indexing Catch-Up Script
  *
  * Syncs a range of historical ledgers in parallel workers without overloading
  * the RPC node or causing duplicate-key violations in the DB.
@@ -20,7 +20,7 @@ import { isHighBloatRisk } from "./bloatDetector.js";
 import { detectUpgrade } from "./upgradeDetector.js";
 import { classifyStorageWrites } from "./storageTierClassifier.js";
 
-const RPC_URL    = process.env.SOROBAN_RPC_URL || "https://soroban-testnet.stellar.org";
+const RPC_URL = process.env.SOROBAN_RPC_URL || "https://soroban-testnet.stellar.org";
 const PAGE_LIMIT = 200; // Soroban RPC hard cap
 
 const rpc = new SorobanRpc.Server(RPC_URL, { allowHttp: true });
@@ -28,15 +28,19 @@ const rpc = new SorobanRpc.Server(RPC_URL, { allowHttp: true });
 // ── CLI argument parsing ──────────────────────────────────────────────────────
 function parseArgs() {
   const args = Object.fromEntries(
-    process.argv.slice(2)
-      .filter(a => a.startsWith("--"))
-      .map(a => { const [k, v] = a.slice(2).split("="); return [k, v]; })
+    process.argv
+      .slice(2)
+      .filter((a) => a.startsWith("--"))
+      .map((a) => {
+        const [k, v] = a.slice(2).split("=");
+        return [k, v];
+      }),
   );
 
-  const from    = Number(args.from);
-  const to      = Number(args.to);
-  const workers = Number(args.workers  || 5);
-  const batch   = Number(args.batch    || 50); // ledgers per worker chunk
+  const from = Number(args.from);
+  const to = Number(args.to);
+  const workers = Number(args.workers || 5);
+  const batch = Number(args.batch || 50); // ledgers per worker chunk
 
   if (!from || !to || from > to) {
     console.error("Usage: node src/catchup.js --from=<ledger> --to=<ledger> [--workers=5] [--batch=50]");
@@ -103,7 +107,9 @@ async function main() {
   await db.init();
 
   const totalLedgers = to - from + 1;
-  console.log(`[catchup] syncing ledgers ${from}–${to} (${totalLedgers} total) with ${workers} workers, batch=${batch}`);
+  console.log(
+    `[catchup] syncing ledgers ${from}–${to} (${totalLedgers} total) with ${workers} workers, batch=${batch}`,
+  );
 
   // Build the full list of ledgers to process
   const allLedgers = Array.from({ length: totalLedgers }, (_, i) => from + i);
@@ -124,4 +130,7 @@ async function main() {
   process.exit(0);
 }
 
-main().catch(err => { console.error("[catchup] fatal:", err); process.exit(1); });
+main().catch((err) => {
+  console.error("[catchup] fatal:", err);
+  process.exit(1);
+});

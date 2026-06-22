@@ -1,5 +1,5 @@
 /**
- * Issue #113 — Multi-Node RPC Validation Client
+ * Multi-Node RPC Validation Client
  *
  * Maintains a pool of Soroban RPC nodes. Queries are sent to the primary node;
  * if it fails or falls behind consensus, the client switches to the next healthy
@@ -14,7 +14,7 @@ import { SorobanRpc } from "@stellar/stellar-sdk";
 
 const RPC_URLS = (process.env.SOROBAN_RPC_URLS || process.env.SOROBAN_RPC_URL || "https://soroban-testnet.stellar.org")
   .split(",")
-  .map(u => u.trim())
+  .map((u) => u.trim())
   .filter(Boolean);
 
 // How many ledgers behind consensus before we consider a node lagging
@@ -22,7 +22,7 @@ const LAG_THRESHOLD = Number(process.env.RPC_LAG_THRESHOLD || 5);
 // Timeout (ms) for a single RPC call before we try the next node
 const CALL_TIMEOUT_MS = Number(process.env.RPC_CALL_TIMEOUT_MS || 1000);
 
-const nodes = RPC_URLS.map(url => ({
+const nodes = RPC_URLS.map((url) => ({
   url,
   server: new SorobanRpc.Server(url, { allowHttp: true }),
   healthy: true,
@@ -37,7 +37,9 @@ function nextHealthy(startIndex) {
     if (nodes[idx].healthy) return idx;
   }
   // All nodes unhealthy — reset and try primary anyway
-  nodes.forEach(n => { n.healthy = true; });
+  nodes.forEach((n) => {
+    n.healthy = true;
+  });
   return 0;
 }
 
@@ -66,7 +68,7 @@ async function callWithFailover(method, ...args) {
       if (ledger) node.latestLedger = ledger;
 
       // Check if this node is lagging behind the best known ledger
-      const bestLedger = Math.max(...nodes.map(n => n.latestLedger));
+      const bestLedger = Math.max(...nodes.map((n) => n.latestLedger));
       if (bestLedger - node.latestLedger > LAG_THRESHOLD) {
         console.warn(`[rpc-multi] node ${node.url} is ${bestLedger - node.latestLedger} ledgers behind, switching`);
         node.healthy = false;
@@ -108,12 +110,19 @@ setInterval(async () => {
   }
 }, 10_000);
 
-export const multiNodeRpc = new Proxy({}, {
-  get(_, method) {
-    return (...args) => callWithFailover(method, ...args);
+export const multiNodeRpc = new Proxy(
+  {},
+  {
+    get(_, method) {
+      return (...args) => callWithFailover(method, ...args);
+    },
   },
-});
+);
 
 export function getRpcNodeStatus() {
-  return nodes.map(({ url, healthy, latestLedger }) => ({ url, healthy, latestLedger }));
+  return nodes.map(({ url, healthy, latestLedger }) => ({
+    url,
+    healthy,
+    latestLedger,
+  }));
 }

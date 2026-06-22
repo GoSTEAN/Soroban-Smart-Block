@@ -20,7 +20,11 @@ function classifyKey(key) {
         return { type: "contractInstance", contractId, durability };
       }
       let dataKey;
-      try { dataKey = String(scValToNative(dataKeyVal)); } catch { dataKey = dataKeyVal.switch().name; }
+      try {
+        dataKey = String(scValToNative(dataKeyVal));
+      } catch {
+        dataKey = dataKeyVal.switch().name;
+      }
       return { type: "contractData", contractId, dataKey, durability };
     }
 
@@ -30,11 +34,17 @@ function classifyKey(key) {
     }
 
     case "account":
-      return { type: "account", accountId: StrKey.encodeEd25519PublicKey(key.account().accountId().ed25519()) };
+      return {
+        type: "account",
+        accountId: StrKey.encodeEd25519PublicKey(key.account().accountId().ed25519()),
+      };
 
     case "trustline": {
       const tl = key.trustLine();
-      return { type: "trustline", accountId: StrKey.encodeEd25519PublicKey(tl.accountId().ed25519()) };
+      return {
+        type: "trustline",
+        accountId: StrKey.encodeEd25519PublicKey(tl.accountId().ed25519()),
+      };
     }
 
     default:
@@ -54,10 +64,10 @@ function classifyKey(key) {
  */
 export function parseFootprint(footprintXdr) {
   const fp = xdr.LedgerFootprint.fromXDR(footprintXdr, "base64");
-  const reads  = fp.readOnly().map(classifyKey);
+  const reads = fp.readOnly().map(classifyKey);
   const writes = fp.readWrite().map(classifyKey);
   return {
-    reads:  { count: reads.length,  keys: reads  },
+    reads: { count: reads.length, keys: reads },
     writes: { count: writes.length, keys: writes },
   };
 }

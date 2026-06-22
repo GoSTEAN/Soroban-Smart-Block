@@ -88,11 +88,17 @@ export function parseDiagnosticEvents(diagnosticEventsXdr) {
         for (const t of topics) {
           const kind = t?.switch?.().name;
           // Always extract scvError from topics
-          if (kind === "scvError") { error = extractErrorFromScVal(t); break; }
+          if (kind === "scvError") {
+            error = extractErrorFromScVal(t);
+            break;
+          }
           // Accept scvSymbol/scvString only if not a generic marker
           if (kind === "scvSymbol" || kind === "scvString") {
             const label = extractErrorFromScVal(t);
-            if (label && !SKIP.has(label)) { error = label; break; }
+            if (label && !SKIP.has(label)) {
+              error = label;
+              break;
+            }
           }
         }
       }
@@ -103,26 +109,38 @@ export function parseDiagnosticEvents(diagnosticEventsXdr) {
       // 4. Detect checked 256-bit arithmetic overflows and override
       // error labels that are actually the arithmetic function name.
       try {
-        const ARITH_FN_RE = /(i256|u256).*(add|sub|mul|pow)|checked.*(add|sub|mul|pow)|\b(add|sub|mul|pow)\b.*(i256|u256)/i;
-        const hasArithFn = topics.some(t => {
-          try { const s = scValToNative(t); return ARITH_FN_RE.test(String(s)); } catch { return false; }
+        const ARITH_FN_RE =
+          /(i256|u256).*(add|sub|mul|pow)|checked.*(add|sub|mul|pow)|\b(add|sub|mul|pow)\b.*(i256|u256)/i;
+        const hasArithFn = topics.some((t) => {
+          try {
+            const s = scValToNative(t);
+            return ARITH_FN_RE.test(String(s));
+          } catch {
+            return false;
+          }
         });
 
-        const hasOverflowWord = topics.some(t => {
-          try { const s = scValToNative(t); return /overflow/i.test(String(s)); } catch { return false; }
+        const hasOverflowWord = topics.some((t) => {
+          try {
+            const s = scValToNative(t);
+            return /overflow/i.test(String(s));
+          } catch {
+            return false;
+          }
         });
 
-        const dataIsVoid = dataVal?.switch?.().name === 'scvVoid';
-        const dataIsOverflowString = dataVal?.switch?.().name === 'scvString' && /overflow/i.test(dataVal.str().toString());
+        const dataIsVoid = dataVal?.switch?.().name === "scvVoid";
 
         // Only classify as `Overflow [Void]` when the overflow is coming from
         // arithmetic host functions that returned Void (checked ops), or when
         // the topics explicitly include an overflow marker alongside an
         // arithmetic function name. Do not override plain string messages.
-        if ((hasArithFn && (dataIsVoid || hasOverflowWord))) {
-          error = 'Overflow [Void]';
+        if (hasArithFn && (dataIsVoid || hasOverflowWord)) {
+          error = "Overflow [Void]";
         }
-      } catch { /* ignore detection errors */ }
+      } catch {
+        /* ignore detection errors */
+      }
 
       // Last resort: check if data is a native error object
       if (!error) {
@@ -131,7 +149,9 @@ export function parseDiagnosticEvents(diagnosticEventsXdr) {
           if (native && typeof native === "object" && "error" in native) {
             error = String(native.error);
           }
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
 
       if (!error) continue; // not an error event — skip
@@ -139,17 +159,25 @@ export function parseDiagnosticEvents(diagnosticEventsXdr) {
       results.push({
         contractId,
         error,
-        topics: topics.map(t => {
-          try { return String(scValToNative(t)); } catch { return "?"; }
+        topics: topics.map((t) => {
+          try {
+            return String(scValToNative(t));
+          } catch {
+            return "?";
+          }
         }),
         data: (() => {
           try {
             const n = scValToNative(dataVal);
             return typeof n === "bigint" ? n.toString() : n;
-          } catch { return null; }
+          } catch {
+            return null;
+          }
         })(),
       });
-    } catch { /* malformed XDR — skip */ }
+    } catch {
+      /* malformed XDR — skip */
+    }
   }
 
   return results;

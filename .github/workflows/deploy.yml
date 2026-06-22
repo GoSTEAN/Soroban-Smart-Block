@@ -148,9 +148,9 @@ jobs:
           subject-digest: ${{ steps.build-frontend.outputs.digest }}
           push-to-registry: true
 
-  # ── 2. Run Migrations ────────────────────────────────────────────────────────
-  migrate:
-    name: Run Migrations (${{ needs.resolve-env.outputs.environment }})
+  # ── 2. Run DB init (schema setup) ────────────────────────────────────────────
+  db-init:
+    name: DB Init (${{ needs.resolve-env.outputs.environment }})
     runs-on: ubuntu-latest
     needs: [resolve-env, build-images]
     environment: ${{ needs.resolve-env.outputs.environment }}
@@ -165,14 +165,14 @@ jobs:
         run: npm ci
         working-directory: indexer
 
-      - name: Run migrations
-        run: npm run migrate:up
+      - name: Run DB schema init
+        run: node -e "import('./src/db.js').then(({db}) => db.init())"
         working-directory: indexer
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
-      - name: Verify migration success
-        run: npm run migrate:status
+      - name: Verify DB connection
+        run: node -e "import('./src/db.js').then(({db}) => db.query('SELECT 1'))"
         working-directory: indexer
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -181,7 +181,7 @@ jobs:
   deploy-dev:
     name: Deploy — dev
     runs-on: ubuntu-latest
-    needs: [resolve-env, migrate]
+    needs: [resolve-env, db-init]
     if: needs.resolve-env.outputs.environment == 'dev'
     environment:
       name: dev
@@ -210,7 +210,7 @@ jobs:
   deploy-staging:
     name: Deploy — staging
     runs-on: ubuntu-latest
-    needs: [resolve-env, migrate]
+    needs: [resolve-env, db-init]
     if: needs.resolve-env.outputs.environment == 'staging'
     environment:
       name: staging
@@ -241,7 +241,7 @@ jobs:
   deploy-production:
     name: Deploy — production
     runs-on: ubuntu-latest
-    needs: [resolve-env, migrate]
+    needs: [resolve-env, db-init]
     if: needs.resolve-env.outputs.environment == 'production'
     environment:
       name: production

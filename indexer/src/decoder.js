@@ -1,8 +1,13 @@
-import { xdr, scValToNative, StrKey } from "@stellar/stellar-sdk";
+import { scValToNative } from "@stellar/stellar-sdk";
+import { db } from "./db.js";
+import { detectSac, detectSacAsset } from "./sac.js";
+import { extractRoleAssignment } from "./roleTracker.js";
+import { decodeRwaEvent } from "./rwaDecoder.js";
+import { parseHeuristic } from "./heuristicParser.js";
 import { parseTTLHostFunction, formatTTLExtension } from "./ttlExtensionParser.js";
 import { parseZkHostFunctions, computeZkCostDelta } from "./zkHostFunctions.js";
 
-// Issue #134 — result codes that indicate block compute capacity was exhausted
+// Result codes that indicate the block compute budget was exhausted.
 const RESOURCE_LIMIT_CODES = new Set([
   "tx_resource_limit_exceeded",
   "txResourceLimitExceeded",
@@ -20,13 +25,15 @@ function isResourceLimitExceeded(ev) {
 }
 
 /**
- * Issue #40 — Extract CPU instructions, memory bytes, and fee charged from
- * the Soroban RPC event's transaction metadata.
+ * Extract resource usage costs from the Soroban RPC event's transaction metadata.
  *
- * The Soroban RPC event object may carry a `feeBump` or `feeCharged` field
- * directly, and the `txMeta` (TransactionMeta XDR) contains sorobanMeta with
- * resource usage.  We extract what's available and return undefined for the
- * rest so callers can store only what exists.
+ * The Soroban RPC event object may carry a `feeCharged` field directly, and
+ * the `txMeta` (TransactionMeta XDR) contains sorobanMeta with resource usage.
+ * Fields:
+ *   cpu_instructions — SorobanTransactionMeta.ext.v1.totalNonRefundableResourceFeeCharged
+ *                      (non-refundable fees are proportional to CPU consumed)
+ *   fee_charged      — SorobanTransactionMeta.ext.v1.totalRefundableResourceFeeCharged
+ *   mem_bytes        — SorobanTransactionMeta.ext.v1.rentFeeCharged (rent ∝ memory)
  *
  * @param {object} ev  Raw Soroban RPC event
  * @returns {{ cpu_instructions?: number, mem_bytes?: number, fee_charged?: number }}
@@ -35,43 +42,41 @@ function extractGasCosts(ev) {
   const result = {};
 
   try {
-    // fee_charged is sometimes surfaced directly on the event
     if (ev.feeCharged != null) result.fee_charged = Number(ev.feeCharged);
 
     const meta = ev.txMeta;
     if (!meta) return result;
 
-    // TransactionMeta is an XDR union; v3 carries sorobanMeta
     let sorobanMeta = null;
     try {
       sorobanMeta = meta.v3?.().sorobanMeta?.() ?? null;
-    } catch { /* not v3 */ }
+    } catch {
+      /* not v3 */
+    }
 
     if (!sorobanMeta) return result;
 
-    // SorobanTransactionMeta.ext carries resource fee breakdown in v1
     try {
       const extV1 = sorobanMeta.ext?.().v1?.();
       if (extV1) {
+        // Non-refundable fee is a proxy for CPU consumption
         if (extV1.totalNonRefundableResourceFeeCharged != null)
           result.cpu_instructions = Number(extV1.totalNonRefundableResourceFeeCharged);
         if (extV1.totalRefundableResourceFeeCharged != null)
           result.fee_charged = Number(extV1.totalRefundableResourceFeeCharged);
+        // Rent fee is a proxy for memory/storage consumption
         if (extV1.rentFeeCharged != null)
           result.mem_bytes = Number(extV1.rentFeeCharged);
       }
-    } catch { /* ext not v1 */ }
-  } catch { /* ignore all extraction errors */ }
+    } catch {
+      /* ext not v1 */
+    }
+  } catch {
+    /* ignore all extraction errors */
+  }
 
   return result;
 }
-
-import { db } from "./db.js";
-import { sacLabel, detectSac, detectSacAsset } from "./sac.js";
-import { classifySacSideEffect } from "./sacSideEffect.js";
-import { extractRoleAssignment } from "./roleTracker.js";
-import { decodeRwaEvent } from "./rwaDecoder.js";
-import { parseHeuristic } from "./heuristicParser.js";
 
 // Native XLM Stellar Asset Contract IDs (testnet + mainnet)
 const NATIVE_SAC_IDS = new Set([
@@ -85,13 +90,11 @@ const NATIVE_SAC_IDS = new Set([
  */
 export async function decode(ev) {
   const contractId = ev.contractId;
-  const topics     = ev.topic.map(t => scValToNative(t));
-  const data       = scValToNative(ev.value);
+  const topics = ev.topic.map((t) => scValToNative(t));
+  const data = scValToNative(ev.value);
 
   // First topic is typically the function name symbol
-  const fnName = typeof topics[0] === "symbol" || typeof topics[0] === "string"
-    ? String(topics[0])
-    : "unknown";
+  const fnName = typeof topics[0] === "symbol" || typeof topics[0] === "string" ? String(topics[0]) : "unknown";
 
   // Detect native XLM wrap/unwrap on the SAC contract
   if (NATIVE_SAC_IDS.has(contractId)) {
@@ -99,12 +102,12 @@ export async function decode(ev) {
     if (wrapUnwrap) {
       return {
         contract_id: contractId,
-        function:    wrapUnwrap.function,
-        ledger:      ev.ledger,
-        tx_hash:     ev.txHash,
+        function: wrapUnwrap.function,
+        ledger: ev.ledger,
+        tx_hash: ev.txHash,
         description: wrapUnwrap.description,
-        raw_topics:  topics.map(String),
-        raw_data:    JSON.stringify(data),
+        raw_topics: topics.map(String),
+        raw_data: JSON.stringify(data),
         ...extractGasCosts(ev),
       };
     }
@@ -112,20 +115,20 @@ export async function decode(ev) {
 
   // Look up registered ABI for richer description
   const meta = await db.getContractMeta(contractId).catch(() => null);
-  const fnAbi = meta?.functions?.find(f => f.name === fnName);
+  const fnAbi = meta?.functions?.find((f) => f.name === fnName);
 
   // Check if this contract is a registered vault
   const vaultMeta = await db.getVault(contractId).catch(() => null);
 
   const { isSac, assetCode } = detectSac(contractId);
-  const { assetIssuer } = detectSacAsset(contractId);
+  detectSacAsset(contractId);
   const contractLabel = vaultMeta?.name
     ? `${vaultMeta.name} (Vault)`
     : isSac
       ? `${assetCode} (SAC:${contractId.slice(0, 8)}…)`
       : (meta?.name ?? contractId);
 
-  // Issue #81: Try RWA decoder first
+  // Try RWA decoder first
   let description = null;
   if (meta) {
     const tempDecoded = {
@@ -146,19 +149,18 @@ export async function decode(ev) {
         : genericDescription(fnName, topics.slice(1), data, contractLabel);
   }
 
-  // Attach heuristic params when no ABI was available (no fnAbi, not a vault, not RWA)
-  const heuristicParams = (!fnAbi && !vaultMeta && !meta)
-    ? parseHeuristic([...topics.slice(1), ...(data != null ? [data] : [])])
-    : undefined;
+  // Attach heuristic params when no ABI was available
+  const heuristicParams =
+    !fnAbi && !vaultMeta && !meta ? parseHeuristic([...topics.slice(1), ...(data != null ? [data] : [])]) : undefined;
 
   const decoded = {
     contract_id: contractId,
-    function:    fnName,
-    ledger:      ev.ledger,
-    tx_hash:     ev.txHash,
+    function: fnName,
+    ledger: ev.ledger,
+    tx_hash: ev.txHash,
     description,
-    raw_topics:  topics.map(String),
-    raw_data:    JSON.stringify(data),
+    raw_topics: topics.map(String),
+    raw_data: JSON.stringify(data),
     ...(isSac && { sac_asset: assetCode }),
     is_clawback: fnName === "clawback",
     is_resource_limit_exceeded: isResourceLimitExceeded(ev),
@@ -170,21 +172,26 @@ export async function decode(ev) {
   const ttlExt = parseTTLHostFunction(ev.hostFunction ?? ev.host_function ?? ev.operation ?? null);
   if (ttlExt) {
     decoded.ttl_extension = ttlExt;
-    // Enrich description so the ledger history row is self-explanatory
     decoded.description = formatTTLExtension(ttlExt);
   }
 
-  // Issue #164 — Protocol 26: detect CAP-0080 ZK host function calls
+  // Protocol 26: detect CAP-0080 ZK host function calls
   const zkCalls = parseZkHostFunctions(ev);
   if (zkCalls) {
-    decoded.zk_host_calls = { calls: zkCalls, delta: computeZkCostDelta(zkCalls) };
+    decoded.zk_host_calls = {
+      calls: zkCalls,
+      delta: computeZkCostDelta(zkCalls),
+    };
   }
 
   // Persist role assignment if this event carries one
   const roleAssignment = extractRoleAssignment(decoded);
   if (roleAssignment) {
-    db.upsertRole({ contract_id: contractId, ledger: ev.ledger, ...roleAssignment })
-      .catch(err => console.error("[roleTracker] upsertRole failed:", err.message));
+    db.upsertRole({
+      contract_id: contractId,
+      ledger: ev.ledger,
+      ...roleAssignment,
+    }).catch((err) => console.error("[roleTracker] upsertRole failed:", err.message));
   }
 
   return decoded;

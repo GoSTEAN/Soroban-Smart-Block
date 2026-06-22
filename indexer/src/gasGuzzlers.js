@@ -1,5 +1,5 @@
 /**
- * Issue #133 — Daily Gas Consumption Leaderboard
+ * Daily Gas Consumption Leaderboard
  *
  * Background worker that aggregates cpu_instructions and fee_charged
  * over 24-hour windows, bucketed by contract_id, to produce a ranked
@@ -46,7 +46,7 @@ async function refresh() {
        GROUP BY contract_id
        ORDER BY SUM(cpu_instructions) DESC NULLS LAST
        LIMIT $1`,
-      [TOP_N]
+      [TOP_N],
     );
     _cache = rows;
     _lastUpdated = new Date().toISOString();

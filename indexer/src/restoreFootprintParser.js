@@ -26,7 +26,11 @@ function classifyRestoredKey(key) {
         };
       }
       let dataKey;
-      try { dataKey = String(scValToNative(keyVal)); } catch { dataKey = keyVal.switch().name; }
+      try {
+        dataKey = String(scValToNative(keyVal));
+      } catch {
+        dataKey = keyVal.switch().name;
+      }
       return {
         type: "contractData",
         label: `Contract data key "${dataKey}" (${contractId.slice(0, 8)}…)`,
@@ -47,12 +51,20 @@ function classifyRestoredKey(key) {
 
     case "account": {
       const accountId = StrKey.encodeEd25519PublicKey(key.account().accountId().ed25519());
-      return { type: "account", label: `Account ${accountId.slice(0, 8)}…`, accountId };
+      return {
+        type: "account",
+        label: `Account ${accountId.slice(0, 8)}…`,
+        accountId,
+      };
     }
 
     case "trustline": {
       const accountId = StrKey.encodeEd25519PublicKey(key.trustLine().accountId().ed25519());
-      return { type: "trustline", label: `Trustline for ${accountId.slice(0, 8)}…`, accountId };
+      return {
+        type: "trustline",
+        label: `Trustline for ${accountId.slice(0, 8)}…`,
+        accountId,
+      };
     }
 
     default:
@@ -101,7 +113,9 @@ export function parseRestoreFootprintOp(txEnvelopeXdr) {
       for (const key of footprint.readOnly()) {
         revivedKeys.push(classifyRestoredKey(key));
       }
-    } catch { /* skip non-restore ops */ }
+    } catch {
+      /* skip non-restore ops */
+    }
   }
 
   return {

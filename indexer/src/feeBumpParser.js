@@ -42,7 +42,9 @@ function extractActualCaller(innerTx) {
         }
       }
     }
-  } catch { /* auth not present or malformed */ }
+  } catch {
+    /* auth not present or malformed */
+  }
   return null;
 }
 
@@ -63,10 +65,7 @@ function extractActualCaller(innerTx) {
  */
 export function parseFeeBump(envelopeXdr) {
   try {
-    const env =
-      typeof envelopeXdr === "string"
-        ? xdr.TransactionEnvelope.fromXDR(envelopeXdr, "base64")
-        : envelopeXdr;
+    const env = typeof envelopeXdr === "string" ? xdr.TransactionEnvelope.fromXDR(envelopeXdr, "base64") : envelopeXdr;
 
     if (env.switch() !== xdr.EnvelopeType.envelopeTypeTxFeeBump()) return null;
 

@@ -22,7 +22,7 @@ async function fetchContractWasm(contractId) {
       }),
       key: xdr.ScVal.scvLedgerKeyContractInstance(),
       durability: xdr.ContractDataDurability.persistent(),
-    })
+    }),
   );
 
   const instanceRes = await withRetry(() => rpc.getLedgerEntries([instanceKey]));
@@ -39,9 +39,7 @@ async function fetchContractWasm(contractId) {
   const wasmHash = executable.wasmHash();
 
   // Step 2: fetch the WASM code entry by hash
-  const codeKey = xdr.LedgerKey.contractCode(
-    new xdr.LedgerKeyContractCode({ hash: wasmHash })
-  );
+  const codeKey = xdr.LedgerKey.contractCode(new xdr.LedgerKeyContractCode({ hash: wasmHash }));
 
   const codeRes = await withRetry(() => rpc.getLedgerEntries([codeKey]));
   if (!codeRes?.entries?.length) return null;
@@ -88,9 +86,9 @@ export async function fetchContractSpec(contractId) {
     if (full === null) return null;
 
     // Map to the legacy shape expected by verifyAbi and the /api/spec/:id endpoint
-    return full.functions.map(fn => ({
+    return full.functions.map((fn) => ({
       name: fn.name,
-      args: (fn.inputs ?? []).map(i => ({ name: i.name, type: i.type })),
+      args: (fn.inputs ?? []).map((i) => ({ name: i.name, type: i.type })),
     }));
   } catch (err) {
     console.error("Failed to fetch contract spec:", err.message);
@@ -155,9 +153,7 @@ export async function verifyAbi(contractId, abiFunctions) {
         expected: expectedArgs,
         actual: actualArgs,
       });
-      errors.push(
-        `Function "${abiFn.name}" has ${actualArgs} parameters but on-chain expects ${expectedArgs}`
-      );
+      errors.push(`Function "${abiFn.name}" has ${actualArgs} parameters but on-chain expects ${expectedArgs}`);
     }
   }
 
@@ -174,7 +170,7 @@ export async function verifyAbi(contractId, abiFunctions) {
  * @returns {boolean} true if valid
  */
 export function validateFunctionName(spec, functionName) {
-  return spec.some(fn => fn.name === functionName);
+  return spec.some((fn) => fn.name === functionName);
 }
 
 /**
@@ -182,7 +178,7 @@ export function validateFunctionName(spec, functionName) {
  * @returns {boolean} true if counts match
  */
 export function validateArgCount(spec, functionName, argCount) {
-  const fn = spec.find(f => f.name === functionName);
+  const fn = spec.find((f) => f.name === functionName);
   if (!fn) return false;
   return fn.args.length === argCount;
 }

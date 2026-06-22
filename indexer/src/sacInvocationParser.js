@@ -8,19 +8,19 @@ import { xdr, StrKey, scValToNative } from "@stellar/stellar-sdk";
  * operations differ from standard SEP-41 user-deployed tokens.
  */
 const SAC_OP_TAGS = {
-  mint:           "SAC Action: Minted Classic Asset to Soroban Account",
-  burn:           "SAC Action: Burned Soroban Balance to Classic Asset",
-  transfer:       "SAC Action: Transferred Classic Asset Between Accounts",
-  clawback:       "SAC Action: Clawback of Classic Asset Trustline Balance",
-  set_admin:      "SAC Action: Updated Asset Administrator",
+  mint: "SAC Action: Minted Classic Asset to Soroban Account",
+  burn: "SAC Action: Burned Soroban Balance to Classic Asset",
+  transfer: "SAC Action: Transferred Classic Asset Between Accounts",
+  clawback: "SAC Action: Clawback of Classic Asset Trustline Balance",
+  set_admin: "SAC Action: Updated Asset Administrator",
   set_authorized: "SAC Action: Updated Asset Authorization Trustline",
-  approve:        "SAC Action: Approved Classic Asset Allowance",
-  allowance:      "SAC Action: Queried Classic Asset Allowance",
-  balance:        "SAC Action: Queried Classic Asset Balance",
-  decimals:       "SAC Action: Queried Asset Decimals",
-  name:           "SAC Action: Queried Asset Name",
-  symbol:         "SAC Action: Queried Asset Symbol",
-  total_supply:   "SAC Action: Queried Total Supply",
+  approve: "SAC Action: Approved Classic Asset Allowance",
+  allowance: "SAC Action: Queried Classic Asset Allowance",
+  balance: "SAC Action: Queried Classic Asset Balance",
+  decimals: "SAC Action: Queried Asset Decimals",
+  name: "SAC Action: Queried Asset Name",
+  symbol: "SAC Action: Queried Asset Symbol",
+  total_supply: "SAC Action: Queried Total Supply",
 };
 
 /**
@@ -45,8 +45,12 @@ export function parseSacInvocation(base64Xdr) {
   const invoke = hf.invokeContract();
   const contractId = StrKey.encodeContract(invoke.contractAddress().contractId());
   const functionName = invoke.functionName().toString();
-  const args = invoke.args().map(a => {
-    try { return scValToNative(a); } catch { return a.switch().name; }
+  const args = invoke.args().map((a) => {
+    try {
+      return scValToNative(a);
+    } catch {
+      return a.switch().name;
+    }
   });
 
   const operationalTag = SAC_OP_TAGS[functionName] ?? `SAC Action: ${functionName}`;
@@ -64,10 +68,8 @@ export function parseSacInvocation(base64Xdr) {
  * @returns {string}
  */
 export function describeSacInvocation(functionName, args, assetCode = "asset") {
-  const fmt = addr =>
-    typeof addr === "string" && addr.length > 10
-      ? `${addr.slice(0, 6)}…${addr.slice(-4)}`
-      : String(addr ?? "?");
+  const fmt = (addr) =>
+    typeof addr === "string" && addr.length > 10 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : String(addr ?? "?");
 
   switch (functionName) {
     case "mint": {

@@ -1,5 +1,5 @@
 /**
- * Issue #139 — GraphQL Interface for Contract Events
+ * GraphQL Interface for Contract Events
  *
  * Mounts a /graphql endpoint on the Express app using a minimal hand-rolled
  * resolver so no heavy framework dependency is required.  The schema supports
@@ -52,11 +52,11 @@ const resolvers = {
   Query: {
     events: async (_root, args) => {
       return db.getEventsCursor({
-        contract:  args.contract  || undefined,
-        fn:        args.fn        || undefined,
-        type:      args.type      || undefined,
-        after_seq: args.after     || 0,
-        limit:     args.limit     ? Math.min(args.limit, 200) : 25,
+        contract: args.contract || undefined,
+        fn: args.fn || undefined,
+        type: args.type || undefined,
+        after_seq: args.after || 0,
+        limit: args.limit ? Math.min(args.limit, 200) : 25,
       });
     },
     event: async (_root, args) => {
@@ -93,9 +93,7 @@ function parseQuery(query) {
 
   // Detect nested: data { ... }
   const dataMatch = rawFields.match(/data\s*\{([^}]*)\}/s);
-  const dataFields = dataMatch
-    ? dataMatch[1].trim().split(/\s+/).filter(Boolean)
-    : null;
+  const dataFields = dataMatch ? dataMatch[1].trim().split(/\s+/).filter(Boolean) : null;
 
   return { opName, args, topFields, dataFields };
 }
@@ -126,17 +124,15 @@ async function execute(parsed) {
     if (!parsed.topFields || parsed.topFields.includes("next_cursor")) {
       out.next_cursor = page.next_cursor;
     }
-    if (!parsed.topFields || parsed.topFields.some(f => f === "data" || parsed.dataFields)) {
-      out.data = (page.data || []).map(ev =>
-        parsed.dataFields ? project(ev, parsed.dataFields) : ev
-      );
+    if (!parsed.topFields || parsed.topFields.some((f) => f === "data" || parsed.dataFields)) {
+      out.data = (page.data || []).map((ev) => (parsed.dataFields ? project(ev, parsed.dataFields) : ev));
     }
     return out;
   }
 
   // Single event
   if (parsed.dataFields) return project(result, parsed.dataFields);
-  if (parsed.topFields)  return project(result, parsed.topFields);
+  if (parsed.topFields) return project(result, parsed.topFields);
   return result;
 }
 
@@ -167,7 +163,9 @@ export function attachGraphQL(app) {
   app.get("/graphql", async (req, res) => {
     const query = req.query.query;
     if (!query) {
-      return res.json({ info: "POST a JSON body with { query } to use GraphQL" });
+      return res.json({
+        info: "POST a JSON body with { query } to use GraphQL",
+      });
     }
     try {
       const parsed = parseQuery(String(query));

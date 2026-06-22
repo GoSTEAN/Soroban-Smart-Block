@@ -11,8 +11,10 @@ import { xdr, StrKey } from "@stellar/stellar-sdk";
 function collectCreates(invocation, parentContractId, acc) {
   try {
     const fn = invocation.function();
-    if (fn.switch().name === "sorobanAuthorizedFunctionTypeCreateContractV2HostFn" ||
-        fn.switch().name === "sorobanAuthorizedFunctionTypeCreateContractHostFn") {
+    if (
+      fn.switch().name === "sorobanAuthorizedFunctionTypeCreateContractV2HostFn" ||
+      fn.switch().name === "sorobanAuthorizedFunctionTypeCreateContractHostFn"
+    ) {
       const args = fn.createContractV2HostFn?.() ?? fn.createContractHostFn?.();
       let newContractId = null;
       try {
@@ -21,17 +23,23 @@ function collectCreates(invocation, parentContractId, acc) {
           // address-based preimage — contract ID resolved post-execution
           newContractId = null;
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       acc.push({ parentContractId, newContractId, raw: fn });
     }
-  } catch { /* not a create */ }
+  } catch {
+    /* not a create */
+  }
 
   // Recurse into sub-invocations
   try {
     for (const sub of invocation.subInvocations()) {
       collectCreates(sub, parentContractId, acc);
     }
-  } catch { /* no sub-invocations */ }
+  } catch {
+    /* no sub-invocations */
+  }
 }
 
 /**
@@ -54,15 +62,19 @@ function extractCreatedContracts(sorobanMeta) {
         if (contractData.key?.().switch().name !== "scvLedgerKeyContractInstance") continue;
         const contractId = StrKey.encodeContract(contractData.contract().contractId());
         created.push(contractId);
-      } catch { /* skip */ }
+      } catch {
+        /* skip */
+      }
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return created;
 }
 
 /**
  * Extract WASM hash or deployment method from CreateContract args.
- * 
+ *
  * @param {object} createArgs  CreateContractArgs from XDR
  * @returns {{ wasmHash: string|null, deploymentMethod: string }}
  */
@@ -72,7 +84,7 @@ function extractDeploymentInfo(createArgs) {
     if (!executable) return { wasmHash: null, deploymentMethod: "unknown" };
 
     const execType = executable.switch().name;
-    
+
     if (execType === "contractExecutableWasm") {
       const hash = executable.wasmHash();
       return {
@@ -80,11 +92,11 @@ function extractDeploymentInfo(createArgs) {
         deploymentMethod: "wasm_hash",
       };
     }
-    
+
     if (execType === "contractExecutableStellarAsset") {
       return { wasmHash: null, deploymentMethod: "stellar_asset" };
     }
-    
+
     return { wasmHash: null, deploymentMethod: execType };
   } catch {
     return { wasmHash: null, deploymentMethod: "unknown" };
@@ -131,7 +143,9 @@ export function detectFactoryDeployment(ev) {
     try {
       // Best-effort: the factory is the contract that initiated the tx
       factoryContractId = ev.contractId ?? null;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     // Extract deployment details from auth entries
     const deploymentDetails = [];
@@ -140,7 +154,9 @@ export function detectFactoryDeployment(ev) {
       let ops = [];
       try {
         ops = env.v1?.().tx().operations() ?? env.tx?.().operations() ?? [];
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
 
       for (const op of ops) {
         try {
@@ -154,18 +170,26 @@ export function detectFactoryDeployment(ev) {
               const rootInv = authEntry.rootInvocation();
               const fn = rootInv.function();
               const fnType = fn.switch().name;
-              
-              if (fnType === "sorobanAuthorizedFunctionTypeCreateContractV2HostFn" ||
-                  fnType === "sorobanAuthorizedFunctionTypeCreateContractHostFn") {
+
+              if (
+                fnType === "sorobanAuthorizedFunctionTypeCreateContractV2HostFn" ||
+                fnType === "sorobanAuthorizedFunctionTypeCreateContractHostFn"
+              ) {
                 const args = fn.createContractV2HostFn?.() ?? fn.createContractHostFn?.();
                 const deployInfo = extractDeploymentInfo(args);
                 deploymentDetails.push(deployInfo);
               }
-            } catch { /* skip */ }
+            } catch {
+              /* skip */
+            }
           }
-        } catch { /* skip */ }
+        } catch {
+          /* skip */
+        }
       }
-    } catch { /* ignore envelope parsing errors */ }
+    } catch {
+      /* ignore envelope parsing errors */
+    }
 
     // Merge contract IDs with deployment details
     const contracts = deployedContractIds.map((contractId, index) => ({
@@ -224,9 +248,13 @@ export function parseFactoryDeployment(txEnvelopeXdr, factoryContractId = null) 
       for (const authEntry of ihf.auth()) {
         try {
           collectCreates(authEntry.rootInvocation(), factoryContractId, creates);
-        } catch { /* skip */ }
+        } catch {
+          /* skip */
+        }
       }
-    } catch { /* skip non-invoke ops */ }
+    } catch {
+      /* skip non-invoke ops */
+    }
   }
 
   const isFactoryDeployment = creates.length >= 2;
@@ -234,10 +262,16 @@ export function parseFactoryDeployment(txEnvelopeXdr, factoryContractId = null) 
   return {
     isFactoryDeployment,
     factoryContractId,
-    deployedContracts: creates.map((c, i) => ({ index: i, parentContractId: c.parentContractId })),
+    deployedContracts: creates.map((c, i) => ({
+      index: i,
+      parentContractId: c.parentContractId,
+    })),
     deploymentTree: {
       factoryContractId,
-      contracts: creates.map((c, i) => ({ index: i, parentContractId: c.parentContractId })),
+      contracts: creates.map((c, i) => ({
+        index: i,
+        parentContractId: c.parentContractId,
+      })),
     },
   };
 }

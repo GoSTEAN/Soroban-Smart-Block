@@ -1,5 +1,5 @@
 /**
- * Issue #137 — In-Memory Redis Cache for Contract Metadata
+ * In-Memory Redis Cache for Contract Metadata
  *
  * Cache-Aside strategy: callers check the cache first; on miss they fetch
  * from the DB/RPC and populate the cache.  A TTL of 60 s ensures stale
@@ -42,7 +42,10 @@ const _map = new Map(); // key → { value, expiresAt }
 function mapGet(key) {
   const entry = _map.get(key);
   if (!entry) return null;
-  if (Date.now() > entry.expiresAt) { _map.delete(key); return null; }
+  if (Date.now() > entry.expiresAt) {
+    _map.delete(key);
+    return null;
+  }
   return entry.value;
 }
 

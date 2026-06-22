@@ -1,5 +1,5 @@
 /**
- * Issue #175 — Reentrancy Guard Trap & Deep Call-Stack Exception Detector
+ * Reentrancy Guard Trap & Deep Call-Stack Exception Detector
  *
  * Identifies when a Soroban transaction fails due to:
  *   1. A reentrancy violation (contract called itself recursively through the guard)
@@ -69,8 +69,8 @@ export function detectReentrancyTraps(diagnosticEventsXdr) {
     const { error, contractId } = ev;
     if (!error) continue;
 
-    const isReentrancy = REENTRANCY_PATTERNS.some(re => re.test(error));
-    const isDepth = DEPTH_PATTERNS.some(re => re.test(error));
+    const isReentrancy = REENTRANCY_PATTERNS.some((re) => re.test(error));
+    const isDepth = DEPTH_PATTERNS.some((re) => re.test(error));
 
     if (isReentrancy || isDepth) {
       const kind = isReentrancy ? "reentrancy" : "depth";
@@ -143,8 +143,8 @@ export function detectReentrancyFromParsed(parsedEvents, observedDepth = 0) {
     const { error, contractId } = parsedEvents[i];
     if (!error) continue;
 
-    const isReentrancy = REENTRANCY_PATTERNS.some(re => re.test(error));
-    const isDepth = DEPTH_PATTERNS.some(re => re.test(error));
+    const isReentrancy = REENTRANCY_PATTERNS.some((re) => re.test(error));
+    const isDepth = DEPTH_PATTERNS.some((re) => re.test(error));
 
     if (isReentrancy || isDepth) {
       const kind = isReentrancy ? "reentrancy" : "depth";

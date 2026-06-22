@@ -15,16 +15,16 @@
 
 /** Map of event-name patterns → canonical role name. */
 const ROLE_EVENT_MAP = {
-  set_admin:       "admin",
-  admin_changed:   "admin",
-  new_admin:       "admin",
-  admin_set:       "admin",
-  set_manager:     "manager",
-  manager_set:     "manager",
-  set_minter:      "minter",
-  minter_added:    "minter",
-  set_pauser:      "pauser",
-  pauser_set:      "pauser",
+  set_admin: "admin",
+  admin_changed: "admin",
+  new_admin: "admin",
+  admin_set: "admin",
+  set_manager: "manager",
+  manager_set: "manager",
+  set_minter: "minter",
+  minter_added: "minter",
+  set_pauser: "pauser",
+  pauser_set: "pauser",
 };
 
 /**
@@ -41,10 +41,14 @@ export function extractRoleAssignment(ev) {
   // Generic role_granted / role_revoked / role_set pattern
   // topic[0] = event name, topic[1] = role name, topic[2] = address
   if (topic0 === "role_granted" || topic0 === "role_revoked" || topic0 === "role_set") {
-    const role    = ev.raw_topics[1] ? String(ev.raw_topics[1]).toLowerCase() : "unknown";
+    const role = ev.raw_topics[1] ? String(ev.raw_topics[1]).toLowerCase() : "unknown";
     const address = ev.raw_topics[2] ?? _parseAddress(ev.raw_data);
     if (!address) return null;
-    return { role, address: String(address), revoked: topic0 === "role_revoked" };
+    return {
+      role,
+      address: String(address),
+      revoked: topic0 === "role_revoked",
+    };
   }
 
   // Named-role patterns
@@ -70,6 +74,8 @@ function _parseAddress(rawData) {
     for (const key of ["address", "new_admin", "admin", "to", "account"]) {
       if (obj[key] && typeof obj[key] === "string") return obj[key];
     }
-  } catch { /* not JSON */ }
+  } catch {
+    /* not JSON */
+  }
   return null;
 }

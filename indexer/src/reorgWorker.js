@@ -1,5 +1,5 @@
 /**
- * Ledger Re-org Detection & Rollback Worker  (Issue #37)
+ * Ledger Re-org Detection & Rollback Worker 
  *
  * Maintains a rolling window of indexed ledger hashes and compares them
  * against the network's consensus state.  When a mismatch is detected the
@@ -29,16 +29,13 @@ export async function recordLedgerHash(ledger, hash) {
     `INSERT INTO ledger_hashes (ledger, hash)
      VALUES ($1, $2)
      ON CONFLICT (ledger) DO NOTHING`,
-    [ledger, hash]
+    [ledger, hash],
   );
 }
 
 /** Return the last N ledger rows we have on record, newest first. */
 async function getRecentLedgerHashes(limit = 20) {
-  const { rows } = await pool.query(
-    `SELECT ledger, hash FROM ledger_hashes ORDER BY ledger DESC LIMIT $1`,
-    [limit]
-  );
+  const { rows } = await pool.query(`SELECT ledger, hash FROM ledger_hashes ORDER BY ledger DESC LIMIT $1`, [limit]);
   return rows; // [{ ledger, hash }, …]
 }
 
@@ -72,9 +69,7 @@ export async function checkForReorg(rpc) {
     }
 
     if (networkHash && networkHash !== hash) {
-      console.warn(
-        `[reorg] Mismatch at ledger ${ledger}: stored=${hash} network=${networkHash}`
-      );
+      console.warn(`[reorg] Mismatch at ledger ${ledger}: stored=${hash} network=${networkHash}`);
       return ledger;
     }
   }
@@ -102,7 +97,7 @@ export function startReorgWorker(rpc, cursorRef, intervalMs = 30_000) {
     console.log("[reorg] Worker started");
 
     while (running) {
-      await new Promise(r => setTimeout(r, intervalMs));
+      await new Promise((r) => setTimeout(r, intervalMs));
       if (!running) break;
 
       try {
@@ -118,5 +113,7 @@ export function startReorgWorker(rpc, cursorRef, intervalMs = 30_000) {
     }
   })();
 
-  return () => { running = false; };
+  return () => {
+    running = false;
+  };
 }

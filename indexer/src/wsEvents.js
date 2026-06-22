@@ -1,5 +1,5 @@
 /**
- * Live Event Streaming via WebSockets  (Issue #39)
+ * Live Event Streaming via WebSockets 
  *
  * Uses Node's built-in EventEmitter as the pub/sub bus (no Redis required).
  * The HTTP server is upgraded to handle WebSocket connections via the `ws`
@@ -15,29 +15,45 @@ const API_KEY = process.env.API_KEY;
 const bus = new EventEmitter();
 bus.setMaxListeners(0);
 
+const txStatusCache = new Map();
+
 export function publish(event) {
   bus.emit("event", event);
 }
 
+export function publishTransactionStatus(status) {
+  const existing = txStatusCache.get(status.tx_hash);
+  if (existing && existing.status === status.status && existing.ledger === status.ledger && existing.error === status.error) {
+    return;
+  }
+  txStatusCache.set(status.tx_hash, status);
+  bus.emit("transaction_status", status);
+}
+
+export function getTransactionStatus(txHash) {
+  return txStatusCache.get(txHash) || null;
+}
+
+export function onTransactionStatus(listener) {
+  bus.on("transaction_status", listener);
+}
+
+export function offTransactionStatus(listener) {
+  bus.off("transaction_status", listener);
+}
+
 export function publishVaultRatio(snapshot) {
   bus.emit("vault_ratio", {
-    contract_id:  snapshot.contract_id,
-    ratio:        snapshot.ratio,
+    contract_id: snapshot.contract_id,
+    ratio: snapshot.ratio,
     total_assets: snapshot.total_assets,
     total_supply: snapshot.total_supply,
-    ledger:       snapshot.ledger,
+    ledger: snapshot.ledger,
   });
 }
 
 export function publishContractLink(link) {
   bus.emit("contract_link", link);
-}
-
-function isOriginAllowed(origin) {
-  if (!origin) return false;
-  const allowed = process.env.CORS_ORIGIN || "*";
-  if (allowed === "*") return true;
-  return allowed.split(",").some(a => a.trim() === origin);
 }
 
 export function attachWebSocketServer(httpServer) {
@@ -54,7 +70,7 @@ export function attachWebSocketServer(httpServer) {
     },
   });
 
-  wss.on("connection", (ws, req) => {
+  wss.on("connection", (ws, _req) => {
     console.log("[ws] Client connected");
 
     const handler = (event) => {
@@ -93,7 +109,12 @@ export function attachWebSocketServer(httpServer) {
       bus.off("contract_link", linkHandler);
     });
 
-    ws.send(JSON.stringify({ type: "connected", message: "Soroban event stream ready" }));
+    ws.send(
+      JSON.stringify({
+        type: "connected",
+        message: "Soroban event stream ready",
+      }),
+    );
   });
 
   console.log("[ws] WebSocket server attached");

@@ -60,9 +60,7 @@ export function renderTemplate(template, params = [], args = [], ctx = {}) {
 
   // Special context tokens
   if (ctx.contractName) vars._contract = ctx.contractName;
-  if (ctx.fnName)       vars._fn       = ctx.fnName;
+  if (ctx.fnName) vars._fn = ctx.fnName;
 
-  return template.replace(/\{(\w+)\}/g, (match, key) =>
-    key in vars ? vars[key] : match
-  );
+  return template.replace(/\{(\w+)\}/g, (match, key) => (key in vars ? vars[key] : match));
 }

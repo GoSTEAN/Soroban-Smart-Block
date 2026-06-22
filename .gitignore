@@ -1,6 +1,7 @@
 # Rust
 target/
 *.wasm
+contracts/**/*.wasm
 
 # Node
 node_modules/

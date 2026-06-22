@@ -15,7 +15,7 @@
  *     rejections in the explorer.
  */
 
-import { xdr, StrKey } from "@stellar/stellar-sdk";
+import { StrKey } from "@stellar/stellar-sdk";
 
 // Protocol 26 config-setting ID for frozen ledger keys
 const FROZEN_KEYS_SETTING_NAME = "configSettingContractFrozenKeys";
@@ -48,7 +48,9 @@ function contractIdsFromLedgerKeys(ledgerKeys) {
         const hash = Buffer.from(key.contractCode().hash()).toString("hex");
         ids.add(`wasm:${hash}`);
       }
-    } catch { /* skip malformed keys */ }
+    } catch {
+      /* skip malformed keys */
+    }
   }
   return ids;
 }
@@ -74,9 +76,7 @@ export function detectQuorumFreeze(txMeta) {
         const switchName = change.switch().name;
         if (switchName !== "ledgerEntryUpdated" && switchName !== "ledgerEntryCreated") continue;
 
-        const entry = switchName === "ledgerEntryUpdated"
-          ? change.updated()
-          : change.created();
+        const entry = switchName === "ledgerEntryUpdated" ? change.updated() : change.created();
 
         const data = entry.data?.();
         if (!data) continue;
@@ -95,7 +95,9 @@ export function detectQuorumFreeze(txMeta) {
 
         if (frozen_ids.length === 0) return null;
         return { frozen_ids };
-      } catch { /* skip malformed entries */ }
+      } catch {
+        /* skip malformed entries */
+      }
     }
 
     return null;
@@ -126,7 +128,7 @@ export function isContractFrozen(frozen_ids, contractId) {
  */
 export function isQuarantineRejection(diagnosticEvents) {
   if (!Array.isArray(diagnosticEvents)) return false;
-  return diagnosticEvents.some(ev => {
+  return diagnosticEvents.some((ev) => {
     try {
       const topics = ev?.event?.body?.v0?.()?.topics?.();
       if (!topics) return false;
@@ -137,6 +139,8 @@ export function isQuarantineRejection(diagnosticEvents) {
         }
       }
       return false;
-    } catch { return false; }
+    } catch {
+      return false;
+    }
   });
 }

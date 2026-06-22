@@ -18,7 +18,11 @@ export function compareInterfaces(oldAbi, newAbi) {
     } else {
       const newFn = newFns.get(name);
       if (!signaturesEqual(oldFn, newFn)) {
-        modified.push({ name, oldInputs: oldFn.inputs, newInputs: newFn.inputs });
+        modified.push({
+          name,
+          oldInputs: oldFn.inputs,
+          newInputs: newFn.inputs,
+        });
       }
     }
   });
@@ -96,7 +100,9 @@ export function generateCompatibilityReport(comparison) {
     removals: comparison.removed,
     additions: comparison.added,
     modifications: comparison.modified,
-    summary: isCompatible ? "No breaking changes" : `${breakingChanges.length} breaking change${breakingChanges.length > 1 ? "s" : ""} detected`,
+    summary: isCompatible
+      ? "No breaking changes"
+      : `${breakingChanges.length} breaking change${breakingChanges.length > 1 ? "s" : ""} detected`,
     compatibilityScore,
     totalChanges,
   };
